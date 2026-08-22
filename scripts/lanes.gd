@@ -44,9 +44,17 @@ static func lane_released(event: InputEvent) -> int:
 	return -1
 
 
-## Nombre visible de la tecla asignada a un lane.
-static func key_label(lane: int) -> String:
-	return key_name(Settings.key_bindings[lane])
+## Nombre visible de la tecla de un lane. Por defecto, la principal.
+static func key_label(lane: int, slot: int = Settings.SLOT_PRIMARY) -> String:
+	return key_name(Settings.binding(slot, lane))
+
+
+## Las dos teclas de un lane juntas: "Izq / A", o solo "Izq" si no hay secundaria.
+static func key_label_pair(lane: int) -> String:
+	var primary := key_label(lane, Settings.SLOT_PRIMARY)
+	if Settings.binding(Settings.SLOT_SECONDARY, lane) == Settings.NO_KEY:
+		return primary
+	return "%s / %s" % [primary, key_label(lane, Settings.SLOT_SECONDARY)]
 
 
 ## Traduce un physical keycode al nombre que ese sitio del teclado tiene en la
@@ -70,9 +78,17 @@ static func key_name(physical_keycode: int) -> String:
 	return KEY_NAMES_ES.get(label, label)
 
 
-## Resumen tipo "A S W D" para los textos de ayuda en pantalla.
+## Resumen tipo "Izq Abajo Arriba Der  o  A S W D" para las ayudas en pantalla.
 static func keys_hint() -> String:
+	var hint := _slot_hint(Settings.SLOT_PRIMARY)
+	if not Settings.slot_is_empty(Settings.SLOT_SECONDARY):
+		hint += "  o  " + _slot_hint(Settings.SLOT_SECONDARY)
+	return hint
+
+
+static func _slot_hint(slot: int) -> String:
 	var parts: Array[String] = []
 	for i in COUNT:
-		parts.append(key_label(i))
+		var keycode := Settings.binding(slot, i)
+		parts.append(key_name(keycode) if keycode != Settings.NO_KEY else "-")
 	return " ".join(parts)

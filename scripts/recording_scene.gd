@@ -96,7 +96,7 @@ func _build_ui() -> void:
 
 		# La tecla de cada carril es configurable, asi que se muestra en el pad.
 		var key := Label.new()
-		key.text = Lanes.key_label(i)
+		key.text = Lanes.key_label_pair(i)
 		key.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 		key.offset_top = -26
 		key.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
