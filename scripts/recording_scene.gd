@@ -4,6 +4,8 @@ const MENU_SCENE := "res://scenes/edit_menu.tscn"
 const SELECT_SCENE := "res://scenes/song_select.tscn"
 const PLAY_SCENE := "res://scenes/play_scene.tscn"
 const PAD_SIZE := Vector2(110, 110)
+## Margen antes de que arranque el audio, para colocar las manos.
+const COUNTDOWN_S := 3.0
 
 var _rec: RecordingManager
 var _time_label: Label
@@ -14,12 +16,16 @@ var _progress: ProgressBar
 var _pads: Array[Panel] = []
 var _action_btn: Button
 
+var _countdown: Label
 var _length_ms := 0.0
 var _saved := false
+var _countdown_left := COUNTDOWN_S
+var _started := false
 
 
 func _ready() -> void:
 	if not Session.has_audio():
+		set_process(false)
 		get_tree().change_scene_to_file(MENU_SCENE)
 		return
 
@@ -36,11 +42,17 @@ func _ready() -> void:
 	_length_ms = Session.audio_stream.get_length() * 1000.0
 	_progress.max_value = _length_ms
 
-	_rec.start(Session.audio_stream, Session.audio_path)
-	_status_label.text = "GRABANDO - toca las flechas al ritmo"
+	# La grabacion arranca tras la cuenta atras: si empieza de golpe no da
+	# tiempo a colocar las manos y las primeras notas salen siempre tarde.
+	_status_label.text = "Preparate..."
 
 
 func _build_ui() -> void:
+	var bg := ColorRect.new()
+	bg.color = Color("14101f")
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(bg)
+
 	var root := VBoxContainer.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -112,8 +124,17 @@ func _build_ui() -> void:
 	_count_label.text = "0 notas"
 	root.add_child(_count_label)
 
+	_countdown = Label.new()
+	_countdown.text = str(ceili(COUNTDOWN_S))
+	_countdown.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_countdown.add_theme_font_size_override("font_size", 56)
+	_countdown.add_theme_color_override("font_color", Color("ffd23f"))
+	root.add_child(_countdown)
+
 	_action_btn = Button.new()
-	_action_btn.text = "Detener y guardar  (Esc)"
+	_action_btn.text = "Cancelar  (Esc)"
+	_action_btn.custom_minimum_size = Vector2(280, 42)
+	_action_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_action_btn.focus_mode = Control.FOCUS_NONE  # que no se coma las flechas
 	_action_btn.pressed.connect(_on_action_pressed)
 	root.add_child(_action_btn)
@@ -128,8 +149,23 @@ func _style_pad(pad: Panel, lane: int, lit: bool) -> void:
 	pad.add_theme_stylebox_override("panel", sb)
 
 
-func _process(_delta: float) -> void:
-	if _rec == null or not _rec.is_recording():
+func _process(delta: float) -> void:
+	if _rec == null:
+		return
+
+	if not _started:
+		_countdown_left -= delta
+		if _countdown_left <= 0.0:
+			_countdown.text = ""
+			_started = true
+			_rec.start(Session.audio_stream, Session.audio_path)
+			_status_label.text = "GRABANDO - toca las flechas al ritmo"
+			_action_btn.text = "Detener y guardar  (Esc)"
+		else:
+			_countdown.text = str(ceili(_countdown_left))
+		return
+
+	if not _rec.is_recording():
 		return
 	var t := _rec.get_time_ms()
 	_time_label.text = _format_time(t)
@@ -199,7 +235,9 @@ func _on_play_now(title: String) -> void:
 
 
 func _on_action_pressed() -> void:
-	if _rec.is_recording():
+	if not _started:
+		get_tree().change_scene_to_file(MENU_SCENE)
+	elif _rec.is_recording():
 		_rec.stop()
 	else:
 		get_tree().change_scene_to_file(MENU_SCENE)

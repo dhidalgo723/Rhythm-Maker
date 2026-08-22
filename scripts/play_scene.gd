@@ -15,6 +15,7 @@ var _countdown: Label
 var _results: PanelContainer
 var _results_text: Label
 var _results_title: Label
+var _pause_panel: PanelContainer
 
 var _entry: SongEntry
 var _stream: AudioStream
@@ -22,6 +23,7 @@ var _length_ms := 1.0
 var _judge_timer := 0.0
 var _countdown_left := COUNTDOWN_S
 var _started := false
+var _paused := false
 
 
 func _ready() -> void:
@@ -44,8 +46,14 @@ func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	_build_ui()
 
+	# La raiz sigue viva en pausa para poder despausar; lo que se congela es el
+	# juego en si, marcado como pausable mas abajo.
+	process_mode = Node.PROCESS_MODE_ALWAYS
+
 	_pm = PlaybackManager.new()
+	_pm.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(_pm)
+	_field.process_mode = Node.PROCESS_MODE_PAUSABLE
 	_field.bind(_pm)
 	_pm.note_hit.connect(_on_note_hit)
 	_pm.note_missed.connect(_on_note_missed)
@@ -129,7 +137,7 @@ func _build_ui() -> void:
 	_countdown.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	add_child(_countdown)
 
-	var hint := _mk_label("%s   -   Esc para salir" % Lanes.keys_hint(), 14)
+	var hint := _mk_label("%s   -   Esc para pausar" % Lanes.keys_hint(), 14)
 	hint.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	hint.offset_top = -30
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -137,6 +145,7 @@ func _build_ui() -> void:
 	add_child(hint)
 
 	_build_results()
+	_build_pause_panel()
 
 
 func _build_results() -> void:
@@ -172,14 +181,59 @@ func _build_results() -> void:
 	var retry := Button.new()
 	retry.text = "Reintentar"
 	retry.focus_mode = Control.FOCUS_NONE
-	retry.pressed.connect(func() -> void: get_tree().reload_current_scene())
+	retry.pressed.connect(_retry)
 	box.add_child(retry)
 
 	var back := Button.new()
 	back.text = "Elegir otra cancion"
 	back.focus_mode = Control.FOCUS_NONE
-	back.pressed.connect(func() -> void: get_tree().change_scene_to_file(SELECT_SCENE))
+	back.pressed.connect(_leave)
 	box.add_child(back)
+
+
+func _build_pause_panel() -> void:
+	_pause_panel = PanelContainer.new()
+	_pause_panel.set_anchors_preset(Control.PRESET_CENTER)
+	_pause_panel.offset_left = -180
+	_pause_panel.offset_right = 180
+	_pause_panel.offset_top = -140
+	_pause_panel.offset_bottom = 140
+	_pause_panel.visible = false
+	add_child(_pause_panel)
+
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color("1e1830")
+	sb.border_color = Color("ffd23f")
+	sb.set_border_width_all(3)
+	sb.set_corner_radius_all(14)
+	sb.set_content_margin_all(22)
+	_pause_panel.add_theme_stylebox_override("panel", sb)
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 12)
+	_pause_panel.add_child(box)
+
+	var title := _mk_label("PAUSA", 36)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_color_override("font_color", Color("ffd23f"))
+	box.add_child(title)
+
+	for entry in [
+		["Reanudar", func() -> void: _set_paused(false)],
+		["Reintentar", _retry],
+		["Salir a la lista", _leave],
+	]:
+		var b := Button.new()
+		b.text = entry[0]
+		b.custom_minimum_size = Vector2(0, 42)
+		b.focus_mode = Control.FOCUS_NONE
+		b.pressed.connect(entry[1])
+		box.add_child(b)
+
+	var hint := _mk_label("Esc para reanudar", 13)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.modulate = Color(1, 1, 1, 0.5)
+	box.add_child(hint)
 
 
 static func _mk_label(text: String, font_size: int) -> Label:
@@ -191,6 +245,9 @@ static func _mk_label(text: String, font_size: int) -> Label:
 
 
 func _process(delta: float) -> void:
+	if _paused:
+		return
+
 	if not _started:
 		_countdown_left -= delta
 		if _countdown_left <= 0.0:
@@ -257,8 +314,33 @@ func _show_results(title: String, color: Color) -> void:
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_cancel"):
-		get_viewport().set_input_as_handled()
-		if _pm != null:
-			_pm.stop()
-		get_tree().change_scene_to_file(SELECT_SCENE)
+	if not event.is_action_pressed("ui_cancel"):
+		return
+	get_viewport().set_input_as_handled()
+	# Con la partida acabada no hay nada que pausar: Esc sale directamente.
+	if _results.visible or not _started:
+		_leave()
+	else:
+		_set_paused(not _paused)
+
+
+func _set_paused(value: bool) -> void:
+	_paused = value
+	_pm.clock.set_paused(value)
+	get_tree().paused = value
+	_pause_panel.visible = value
+
+
+## Despausar antes de salir: el arbol pausado se queda asi en la escena nueva.
+func _leave() -> void:
+	if _paused:
+		_set_paused(false)
+	if _pm != null:
+		_pm.stop()
+	get_tree().change_scene_to_file(SELECT_SCENE)
+
+
+func _retry() -> void:
+	if _paused:
+		_set_paused(false)
+	get_tree().reload_current_scene()

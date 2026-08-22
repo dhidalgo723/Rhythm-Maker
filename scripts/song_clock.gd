@@ -23,9 +23,11 @@ signal finished()
 var player: AudioStreamPlayer
 
 var _running := false
+var _paused := false
 var _anchor_song_s := 0.0     # tiempo de cancion en el instante del ancla
 var _anchor_usec := 0         # Time.get_ticks_usec() en el instante del ancla
 var _start_offset_s := 0.0    # from_position pasado a play()
+var _paused_at_s := 0.0       # tiempo de cancion congelado durante la pausa
 
 
 func _init(audio_player: AudioStreamPlayer = null) -> void:
@@ -60,13 +62,37 @@ func start(from_ms: float = 0.0) -> void:
 	# Ancla inicial: el audio todavia no reporta posicion util en el primer frame.
 	_anchor_song_s = _start_offset_s
 	_anchor_usec = Time.get_ticks_usec()
+	_paused = false
 	_running = true
 
 
 func stop() -> void:
 	_running = false
+	_paused = false
+	player.stream_paused = false
 	if player.playing:
 		player.stop()
+
+
+## Congela el reloj y el audio a la vez.
+##
+## El ancla se lleva contra Time.get_ticks_usec(), que sigue corriendo durante
+## la pausa: si no se re-anclara al reanudar, el reloj daria por transcurrido
+## todo el rato que el juego estuvo parado y las notas saldrian desplazadas.
+func set_paused(value: bool) -> void:
+	if not _running or value == _paused:
+		return
+	_paused = value
+	player.stream_paused = value
+	if value:
+		_paused_at_s = _anchor_song_s + float(Time.get_ticks_usec() - _anchor_usec) / 1_000_000.0
+	else:
+		_anchor_song_s = _paused_at_s
+		_anchor_usec = Time.get_ticks_usec()
+
+
+func is_paused() -> bool:
+	return _paused
 
 
 func is_running() -> bool:
@@ -76,6 +102,8 @@ func is_running() -> bool:
 ## Tiempo de canción audible, en ms. Este es el valor que se usa para
 ## timestamped de inputs, spawn de notas y juicio de hits.
 func get_time_ms() -> float:
+	if _paused:
+		return _paused_at_s * 1000.0
 	if not _running:
 		return _anchor_song_s * 1000.0
 	var elapsed := float(Time.get_ticks_usec() - _anchor_usec) / 1_000_000.0
@@ -95,7 +123,7 @@ func _raw_audio_time_s() -> float:
 
 
 func _process(_delta: float) -> void:
-	if not _running:
+	if not _running or _paused:
 		return
 
 	if not player.playing:

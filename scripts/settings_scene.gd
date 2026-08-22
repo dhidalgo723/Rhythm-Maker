@@ -4,12 +4,14 @@ extends Control
 ## Cada carril tiene dos: principal y secundaria (esta puede quedar vacia).
 
 const MENU_SCENE := "res://scenes/main_menu.tscn"
+const CALIBRATION_SCENE := "res://scenes/calibration_scene.tscn"
 const KEY_BTN_SIZE := Vector2(150, 42)
 
 ## _key_buttons[slot][lane]
 var _key_buttons: Array[Array] = []
 var _clear_buttons: Array[Button] = []
 var _preset_labels: Array[Label] = []
+var _offset_label: Label
 var _status: Label
 
 ## Hueco que espera una tecla, o -1 si no estamos reasignando.
@@ -41,6 +43,9 @@ func _ready() -> void:
 
 	for slot in Settings.SLOT_COUNT:
 		root.add_child(_build_preset_row(slot))
+
+	root.add_child(_spacer(12))
+	root.add_child(_build_latency_row())
 
 	root.add_child(_spacer(6))
 	_status = _center_label("", 15)
@@ -151,6 +156,53 @@ func _build_preset_row(slot: int) -> Control:
 	return row
 
 
+func _build_latency_row() -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 4)
+	box.add_child(_center_label("Latencia", 19))
+
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 6)
+	box.add_child(row)
+
+	var minus := Button.new()
+	minus.text = "-5 ms"
+	minus.custom_minimum_size = Vector2(80, 34)
+	minus.focus_mode = Control.FOCUS_NONE
+	minus.pressed.connect(_nudge_offset.bind(-5))
+	row.add_child(minus)
+
+	_offset_label = _center_label("", 17)
+	_offset_label.custom_minimum_size = Vector2(150, 0)
+	row.add_child(_offset_label)
+
+	var plus := Button.new()
+	plus.text = "+5 ms"
+	plus.custom_minimum_size = Vector2(80, 34)
+	plus.focus_mode = Control.FOCUS_NONE
+	plus.pressed.connect(_nudge_offset.bind(5))
+	row.add_child(plus)
+
+	var calibrate := Button.new()
+	calibrate.text = "Calibrar..."
+	calibrate.custom_minimum_size = Vector2(120, 34)
+	calibrate.focus_mode = Control.FOCUS_NONE
+	calibrate.pressed.connect(func() -> void:
+		get_tree().change_scene_to_file(CALIBRATION_SCENE))
+	row.add_child(calibrate)
+
+	return box
+
+
+func _nudge_offset(amount: int) -> void:
+	_cancel_wait()
+	Settings.offset_ms = clampi(Settings.offset_ms + amount, -500, 500)
+	Settings.save_settings()
+	_set_status("Offset: %+d ms" % Settings.offset_ms, Color("2ee6a8"))
+	_refresh()
+
+
 static func _center_label(text: String, font_size: int) -> Label:
 	var l := Label.new()
 	l.text = text
@@ -181,6 +233,8 @@ func _refresh() -> void:
 	for lane in Lanes.COUNT:
 		var empty := Settings.binding(Settings.SLOT_SECONDARY, lane) == Settings.NO_KEY
 		_clear_buttons[lane].disabled = empty
+
+	_offset_label.text = "%+d ms" % Settings.offset_ms
 
 	for slot in Settings.SLOT_COUNT:
 		var preset := Settings.current_preset(slot)

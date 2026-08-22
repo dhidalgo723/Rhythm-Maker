@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/smoke_calibration.gd" id="1_cal"]
+
+[node name="SmokeCalibration" type="Node"]
+script = ExtResource("1_cal")
