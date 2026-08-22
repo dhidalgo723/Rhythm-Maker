@@ -93,6 +93,17 @@ func _build_ui() -> void:
 		arrow.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		arrow.add_theme_font_size_override("font_size", 44)
 		pad.add_child(arrow)
+
+		# La tecla de cada carril es configurable, asi que se muestra en el pad.
+		var key := Label.new()
+		key.text = Lanes.key_label(i)
+		key.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+		key.offset_top = -26
+		key.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		key.add_theme_font_size_override("font_size", 14)
+		key.modulate = Color(1, 1, 1, 0.65)
+		pad.add_child(key)
+
 		pads.add_child(pad)
 		_pads.append(pad)
 

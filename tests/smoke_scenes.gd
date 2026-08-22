@@ -13,6 +13,7 @@ const SCENES := [
 	"res://scenes/main_menu.tscn",
 	"res://scenes/edit_menu.tscn",
 	"res://scenes/song_select.tscn",
+	"res://scenes/settings_scene.tscn",
 	"res://scenes/recording_scene.tscn",
 	"res://scenes/play_scene.tscn",
 ]

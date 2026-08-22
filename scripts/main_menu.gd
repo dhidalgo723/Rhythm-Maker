@@ -2,6 +2,7 @@ extends Control
 
 const EDIT_SCENE := "res://scenes/edit_menu.tscn"
 const SELECT_SCENE := "res://scenes/song_select.tscn"
+const SETTINGS_SCENE := "res://scenes/settings_scene.tscn"
 
 
 func _ready() -> void:
@@ -35,6 +36,8 @@ func _ready() -> void:
 		func() -> void: get_tree().change_scene_to_file(EDIT_SCENE)))
 	root.add_child(_menu_button("MODO JUEGO", Color("12fa05"),
 		func() -> void: get_tree().change_scene_to_file(SELECT_SCENE)))
+	root.add_child(_menu_button("AJUSTES", Color("ffd23f"),
+		func() -> void: get_tree().change_scene_to_file(SETTINGS_SCENE)))
 	root.add_child(_spacer(10))
 	root.add_child(_menu_button("SALIR", Color("888899"),
 		func() -> void: get_tree().quit()))
@@ -42,8 +45,9 @@ func _ready() -> void:
 	var info := Label.new()
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	info.modulate = Color(1, 1, 1, 0.35)
-	info.text = "%d grabaciones guardadas   -   latencia de salida %.0f ms" % [
-		Library.list_songs().size(), AudioServer.get_output_latency() * 1000.0]
+	info.text = "%d grabaciones guardadas   -   teclas %s   -   latencia de salida %.0f ms" % [
+		Library.list_songs().size(), Lanes.keys_hint(),
+		AudioServer.get_output_latency() * 1000.0]
 	root.add_child(_spacer(20))
 	root.add_child(info)
 

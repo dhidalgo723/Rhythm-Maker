@@ -129,7 +129,7 @@ func _build_ui() -> void:
 	_countdown.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	add_child(_countdown)
 
-	var hint := _mk_label("Flechas o DFJK   -   Esc para salir", 14)
+	var hint := _mk_label("%s   -   Esc para salir" % Lanes.keys_hint(), 14)
 	hint.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	hint.offset_top = -30
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
