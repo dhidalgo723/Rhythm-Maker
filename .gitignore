@@ -1,0 +1,13 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# generado por tests/scripts
+*.chart.json
+tests/*.import
+
+# capturas generadas por tests/capture.tscn
+tests/*.png
+
+# python
+__pycache__/
