@@ -2,19 +2,24 @@ extends Node
 
 ## Smoke test headless del modo juego.
 ##   1. la biblioteca encuentra la cancion instalada y su audio carga
-##   2. un bot que toca cada nota a tiempo saca solo PERFECT
-##   3. no tocar nada acaba en game over al pasar de MAX_MISSES
+##   2. las ventanas de cada nivel (Perfecto ... Errada) estan donde deben
+##   3. cada nivel da su puntuacion, con tiempos exactos
+##   4. un bot que toca a tiempo en los 5 carriles (espacio incluido) acierta todo
+##   5. no tocar nada acaba en game over al pasar de MAX_MISSES
 ## Correr: godot --headless --path . res://tests/smoke_play.tscn
 
 const TONE := "res://tests/test_tone.wav"
-const KEYS := [KEY_LEFT, KEY_DOWN, KEY_UP, KEY_RIGHT]
+const K := Judgement.Kind
 
 var _failed := false
 
 
 func _ready() -> void:
+	AudioServer.set_bus_mute(0, true)
 	await get_tree().process_frame
 	await _test_library()
+	_test_classify_windows()
+	_test_tier_scoring()
 	await _test_autoplay()
 	await _test_game_over()
 	if not _failed:
@@ -52,6 +57,81 @@ func _test_library() -> void:
 			"%s tiene notas mas alla del final del audio" % e.title())
 
 
+# --- 2. ventanas ---
+func _test_classify_windows() -> void:
+	# [desfase en ms, nivel esperado]. Los bordes son inclusivos.
+	var cases := [
+		[0.0, K.PERFECT], [45.0, K.PERFECT], [-45.0, K.PERFECT],
+		[45.5, K.GOOD], [-90.0, K.GOOD],
+		[90.5, K.NORMAL], [135.0, K.NORMAL],
+		[-135.5, K.BAD], [165.0, K.BAD],
+		[165.5, K.MISS], [-400.0, K.MISS],
+	]
+	for c in cases:
+		var got := Judgement.classify(c[0])
+		_check(got == c[1], "%+.1f ms deberia ser %s, salio %s" % [
+			c[0], Judgement.NAMES[c[1]], Judgement.NAMES[got]])
+
+	_check(Judgement.timing_hint(K.GOOD, -60.0) == "pronto", "un toque adelantado deberia decir pronto")
+	_check(Judgement.timing_hint(K.BAD, 150.0) == "tarde", "un toque atrasado deberia decir tarde")
+	_check(Judgement.timing_hint(K.PERFECT, 20.0) == "", "un perfecto no necesita pista")
+	print("[ventanas] Perfecto 45 / Bueno 90 / Normal 135 / Vaya... 165 ms, simetricas")
+
+
+# --- 3. puntuacion por nivel, sin depender del framerate ---
+func _test_tier_scoring() -> void:
+	# Notas lejanas en el tiempo: el reloj real no llega a ellas durante el
+	# test, asi que nada se marca como errada por su cuenta.
+	var base := 60000
+	var chart := Chart.new()
+	for i in 6:
+		chart.add_note(base + i * 1000, 0)
+
+	var pm := PlaybackManager.new()
+	add_child(pm)
+	pm.start(_tone_stream(), chart)
+
+	# [desfase, nivel esperado, puntos esperados (base + bonus de combo)]
+	var plays := [
+		[0.0, K.PERFECT, 350 + 0],
+		[30.0, K.PERFECT, 350 + 1],
+		[-60.0, K.GOOD, 200 + 2],
+		[110.0, K.NORMAL, 100 + 3],
+		[-150.0, K.BAD, 50 + 4],
+	]
+	var expected_score := 0
+	for i in plays.size():
+		var play: Array = plays[i]
+		var before := pm.score
+		var got := pm.judge_press(0, base + i * 1000 + play[0])
+		_check(got == play[1], "toque %d: esperaba %s, salio %s" % [
+			i, Judgement.NAMES[play[1]], Judgement.NAMES[got]])
+		_check(pm.score - before == play[2], "toque %d: esperaba +%d puntos, dio %+d" % [
+			i, play[2], pm.score - before])
+		expected_score += play[2]
+
+	_check(pm.combo == 5, "Vaya... no deberia romper el combo (combo %d)" % pm.combo)
+
+	# Toque a 300 ms de la siguiente nota: Errada, y la nota sigue esperando.
+	var got_miss := pm.judge_press(0, base + 5000 - 300)
+	_check(got_miss == K.MISS, "un toque a 300 ms deberia ser Errada")
+	_check(pm.combo == 0, "la Errada deberia romper el combo")
+	_check(pm.score == expected_score - 100, "la Errada deberia restar 100 (score %d)" % pm.score)
+	_check(pm.lane_head(0) == 5, "una Errada sin nota no deberia consumir la nota siguiente")
+
+	for kind in Judgement.ORDER:
+		var want := 2 if kind == K.PERFECT else 1
+		_check(pm.count(kind) == want, "%s: esperaba %d, hubo %d" % [
+			Judgement.NAMES[kind], want, pm.count(kind)])
+
+	# (2*1.0 + 0.75 + 0.5 + 0.25 + 0) / 6 = 58.33 %
+	_check(absf(pm.accuracy() - 58.333) < 0.01, "precision %.3f, esperaba 58.333" % pm.accuracy())
+
+	print("[niveles] P/P/B/N/V/E -> score %d, precision %.1f%%" % [pm.score, pm.accuracy()])
+	pm.stop()
+	pm.queue_free()
+
+
 func _make_chart(times: Array, spread: bool) -> Chart:
 	var c := Chart.new()
 	for i in times.size():
@@ -63,14 +143,13 @@ func _tone_stream() -> AudioStream:
 	return AudioLoader.load_stream(ProjectSettings.globalize_path(TONE))
 
 
-# --- 2. autoplay: todo perfect ---
+# --- 4. autoplay en los 5 carriles ---
 func _test_autoplay() -> void:
-	var times := [600, 1000, 1400, 1800, 2200]
+	var times := [600, 1000, 1400, 1800, 2200]   # un carril cada una, espacio incluido
 	var pm := PlaybackManager.new()
 	add_child(pm)
 	pm.start(_tone_stream(), _make_chart(times, true))
 
-	var hits := 0
 	var fired := 0
 	while pm.is_active() and fired < times.size():
 		await get_tree().process_frame
@@ -81,19 +160,20 @@ func _test_autoplay() -> void:
 	# margen para que se juzguen los ultimos eventos
 	for i in 20:
 		await get_tree().process_frame
-	hits = pm.perfects + pm.goods
 	pm.stop()
 
-	print("[autoplay] perfect=%d good=%d fallos=%d score=%d precision=%.1f%%" % [
-		pm.perfects, pm.goods, pm.misses, pm.score, pm.accuracy()])
-	_check(hits == times.size(), "se esperaban %d aciertos, hubo %d" % [times.size(), hits])
+	print("[autoplay] perfecto=%d bueno=%d errada=%d score=%d precision=%.1f%%" % [
+		pm.count(K.PERFECT), pm.count(K.GOOD), pm.misses, pm.score, pm.accuracy()])
+	_check(pm.hits() == times.size(), "se esperaban %d aciertos, hubo %d" % [times.size(), pm.hits()])
 	_check(pm.misses == 0, "el bot fallo %d veces tocando a tiempo" % pm.misses)
-	_check(pm.perfects == times.size(), "no todos fueron PERFECT (%d)" % pm.perfects)
-	_check(pm.score > 0, "el score no subio")
+	# El bot pulsa en el frame siguiente a la nota: un tiron del sistema puede
+	# empujar uno a Bueno. Se tolera uno; mas ya seria un problema de timing.
+	_check(pm.count(K.PERFECT) >= times.size() - 1,
+		"casi todos deberian ser Perfecto (%d)" % pm.count(K.PERFECT))
 	pm.queue_free()
 
 
-# --- 3. game over al pasar de MAX_MISSES ---
+# --- 5. game over al pasar de MAX_MISSES ---
 func _test_game_over() -> void:
 	var times: Array = []
 	for i in Judgement.MAX_MISSES + 3:
@@ -110,7 +190,7 @@ func _test_game_over() -> void:
 		await get_tree().process_frame
 		guard += 1
 
-	print("[game over] fallos=%d  perdio=%s  score=%d" % [pm.misses, lost[0], pm.score])
+	print("[game over] errada=%d  perdio=%s  score=%d" % [pm.misses, lost[0], pm.score])
 	_check(lost[0], "no se disparo game_over sin tocar nada")
 	_check(pm.misses == Judgement.MAX_MISSES + 1,
 		"se esperaba perder exactamente al fallo %d, hubo %d" % [
@@ -119,12 +199,15 @@ func _test_game_over() -> void:
 	pm.queue_free()
 
 
+## Pulsa la tecla que el jugador tiene asignada de verdad, no una fija: si no,
+## el test fallaria en cuanto alguien cambie sus teclas en Ajustes.
 func _press(lane: int) -> void:
+	var key := Settings.binding(Settings.SLOT_PRIMARY, lane)
 	var down := InputEventKey.new()
-	down.physical_keycode = KEYS[lane]
+	down.physical_keycode = key
 	down.pressed = true
 	Input.parse_input_event(down)
 	var up := InputEventKey.new()
-	up.physical_keycode = KEYS[lane]
+	up.physical_keycode = key
 	up.pressed = false
 	Input.parse_input_event(up)

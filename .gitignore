@@ -3,7 +3,7 @@
 /android/
 
 # generado por tests/scripts
-*.chart.json
+tests/*.chart.json
 tests/*.import
 
 # capturas generadas por tests/capture.tscn
@@ -11,3 +11,18 @@ tests/*.png
 
 # python
 __pycache__/
+
+# Audio de las canciones del roguelike: no se sube sin decidirlo (licencias)
+roguelike/songs/*.wav
+roguelike/songs/*.mp3
+roguelike/songs/*.ogg
+roguelike/songs/*.import
+
+# Assets de terceros: no se suben (Keys/ es un pack de pago y GUI/ no trae
+# licencia). Sin ellos el juego usa el tema por defecto de Godot y teclas sin imagen.
+Keys/
+GUI/
+
+# Audio que no es del proyecto
+tests/EL CONTROL ft.KafaeskeThief.wav
+tests/EL CONTROL ft.KafaeskeThief.wav.import

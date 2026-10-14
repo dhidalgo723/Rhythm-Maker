@@ -5,6 +5,7 @@ const RECORDING_SCENE := "res://scenes/recording_scene.tscn"
 
 var _file_label: Label
 var _warning: Label
+var _load_btn: Button
 var _record_btn: Button
 var _title_edit: LineEdit
 var _dialog: FileDialog
@@ -14,17 +15,23 @@ func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 
 	var bg := ColorRect.new()
-	bg.color = Color("14101f")
+	bg.color = GuiTheme.BG
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
+	# Todo el contenido dentro de la pantalla de casete, centrado en pantalla.
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(center)
+	var panel := PanelContainer.new()
+	center.add_child(panel)
 	var root := VBoxContainer.new()
-	root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	root.alignment = BoxContainer.ALIGNMENT_CENTER
 	root.add_theme_constant_override("separation", 12)
-	add_child(root)
+	panel.add_child(root)
 
-	root.add_child(_center_label("MODO EDICION", 36))
+	var title := _center_label("MODO EDICION", 36)
+	title.add_theme_color_override("font_color", GuiTheme.TEXT_FOCUS)
+	root.add_child(title)
 	root.add_child(_center_label(
 		"1. Carga un audio   2. Grabalo tocando las flechas   3. Se guarda en tu biblioteca", 14))
 
@@ -35,12 +42,13 @@ func _ready() -> void:
 	_warning.add_theme_color_override("font_color", Color("ffb347"))
 	root.add_child(_warning)
 
-	var load_btn := Button.new()
-	load_btn.text = "Cargar audio (WAV / MP3 / OGG)"
-	load_btn.custom_minimum_size = Vector2(340, 46)
-	load_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	load_btn.pressed.connect(_on_load_pressed)
-	root.add_child(load_btn)
+	_load_btn = Button.new()
+	_load_btn.text = "Cargar audio (WAV / MP3 / OGG)"
+	_load_btn.theme_type_variation = "BigButton"
+	_load_btn.custom_minimum_size = Vector2(460, 52)
+	_load_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_load_btn.pressed.connect(_on_load_pressed)
+	root.add_child(_load_btn)
 
 	var name_row := HBoxContainer.new()
 	name_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -56,15 +64,16 @@ func _ready() -> void:
 
 	_record_btn = Button.new()
 	_record_btn.text = "EMPEZAR GRABACION"
-	_record_btn.custom_minimum_size = Vector2(340, 54)
+	_record_btn.theme_type_variation = "BigButton"
+	_record_btn.custom_minimum_size = Vector2(460, 56)
 	_record_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	_record_btn.add_theme_font_size_override("font_size", 20)
 	_record_btn.disabled = true
 	_record_btn.pressed.connect(_on_record_pressed)
 	root.add_child(_record_btn)
 
 	var back := Button.new()
 	back.text = "Volver"
+	back.custom_minimum_size = Vector2(200, 40)
 	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	back.pressed.connect(func() -> void: get_tree().change_scene_to_file(MENU_SCENE))
 	root.add_child(back)
@@ -75,9 +84,12 @@ func _ready() -> void:
 	_dialog.use_native_dialog = true
 	_dialog.filters = AudioLoader.FILE_FILTERS
 	_dialog.file_selected.connect(_on_file_selected)
+	# Al cerrar el dialogo sin elegir, el foco vuelve a donde estaba.
+	_dialog.canceled.connect(func() -> void: _load_btn.grab_focus())
 	add_child(_dialog)
 
 	_refresh()
+	_load_btn.grab_focus.call_deferred()
 
 
 static func _center_label(text: String, font_size: int) -> Label:
@@ -99,6 +111,8 @@ func _on_file_selected(path: String) -> void:
 		return
 	_title_edit.text = Session.song_title()
 	_refresh()
+	# Con el audio cargado, lo siguiente natural es grabar.
+	_record_btn.grab_focus()
 
 
 func _refresh() -> void:
@@ -120,3 +134,9 @@ func _on_record_pressed() -> void:
 	if Session.recording_title == "":
 		Session.recording_title = Session.song_title()
 	get_tree().change_scene_to_file(RECORDING_SCENE)
+
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel"):
+		get_viewport().set_input_as_handled()
+		get_tree().change_scene_to_file(MENU_SCENE)

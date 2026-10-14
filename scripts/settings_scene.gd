@@ -5,9 +5,13 @@ extends Control
 
 const MENU_SCENE := "res://scenes/main_menu.tscn"
 const CALIBRATION_SCENE := "res://scenes/calibration_scene.tscn"
-const KEY_BTN_SIZE := Vector2(150, 42)
+const KEY_BTN_SIZE := Vector2(150, 36)
+## Separacion entre botones de una misma fila: lo que ocupa el cursor de
+## seleccion, para que no tape el boton de al lado.
+const NAV_GAP := 22
 
-## _key_buttons[slot][lane]
+## _key_buttons[slot][lane] y _clear_buttons[lane], indexados por id de carril
+## (no por fila: las filas siguen el orden de pantalla, con el espacio en medio).
 var _key_buttons: Array[Array] = []
 var _clear_buttons: Array[Button] = []
 var _preset_labels: Array[Label] = []
@@ -23,31 +27,33 @@ func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 
 	var bg := ColorRect.new()
-	bg.color = Color("14101f")
+	bg.color = GuiTheme.BG
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
 	var root := VBoxContainer.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.alignment = BoxContainer.ALIGNMENT_CENTER
-	root.add_theme_constant_override("separation", 8)
+	root.add_theme_constant_override("separation", 6)
 	add_child(root)
 
-	root.add_child(_center_label("AJUSTES", 34))
+	var title := _center_label("AJUSTES", 34)
+	title.add_theme_color_override("font_color", GuiTheme.TEXT_FOCUS)
+	root.add_child(title)
 	root.add_child(_center_label("Teclas del juego", 19))
 	root.add_child(_center_label(
 		"Pulsa un hueco y despues la tecla que quieras. Esc cancela.", 13))
-	root.add_child(_spacer(8))
+	root.add_child(_spacer(2))
 	root.add_child(_build_grid())
-	root.add_child(_spacer(12))
+	root.add_child(_spacer(4))
 
 	for slot in Settings.SLOT_COUNT:
 		root.add_child(_build_preset_row(slot))
 
-	root.add_child(_spacer(12))
+	root.add_child(_spacer(4))
 	root.add_child(_build_latency_row())
 
-	root.add_child(_spacer(6))
+	root.add_child(_spacer(0))
 	_status = _center_label("", 15)
 	root.add_child(_status)
 
@@ -55,19 +61,20 @@ func _ready() -> void:
 	back.text = "Volver"
 	back.custom_minimum_size = Vector2(200, 40)
 	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	back.focus_mode = Control.FOCUS_NONE
 	back.pressed.connect(_go_back)
 	root.add_child(back)
 
 	_refresh()
+	# Empezar sobre la primera tecla: lo mas probable es venir a cambiarla.
+	(_key_buttons[Settings.SLOT_PRIMARY][Lanes.DISPLAY_ORDER[0]] as Button).grab_focus.call_deferred()
 
 
 func _build_grid() -> Control:
 	var grid := GridContainer.new()
 	grid.columns = 5
 	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	grid.add_theme_constant_override("h_separation", 10)
-	grid.add_theme_constant_override("v_separation", 6)
+	grid.add_theme_constant_override("h_separation", NAV_GAP)
+	grid.add_theme_constant_override("v_separation", 4)
 
 	# Cabecera: hueco para la flecha y el nombre, luego un titulo por slot.
 	grid.add_child(Control.new())
@@ -81,16 +88,13 @@ func _build_grid() -> Control:
 
 	_key_buttons.resize(Settings.SLOT_COUNT)
 	for slot in Settings.SLOT_COUNT:
-		_key_buttons[slot] = []
+		var row_buttons: Array[Button] = []
+		row_buttons.resize(Lanes.COUNT)
+		_key_buttons[slot] = row_buttons
+	_clear_buttons.resize(Lanes.COUNT)
 
-	for lane in Lanes.COUNT:
-		var arrow := Label.new()
-		arrow.text = Lanes.ARROWS[lane]
-		arrow.custom_minimum_size = Vector2(30, 0)
-		arrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		arrow.add_theme_font_size_override("font_size", 24)
-		arrow.add_theme_color_override("font_color", Lanes.COLORS[lane])
-		grid.add_child(arrow)
+	for lane in Lanes.DISPLAY_ORDER:
+		grid.add_child(KeyIcons.make_icon(lane, 32))
 
 		var lane_name := Label.new()
 		lane_name.text = Lanes.NAMES[lane]
@@ -100,20 +104,18 @@ func _build_grid() -> Control:
 		for slot in Settings.SLOT_COUNT:
 			var btn := Button.new()
 			btn.custom_minimum_size = KEY_BTN_SIZE
-			btn.focus_mode = Control.FOCUS_NONE  # que las flechas no naveguen el menu
 			btn.add_theme_font_size_override("font_size", 17)
 			btn.pressed.connect(_on_rebind.bind(slot, lane))
 			grid.add_child(btn)
-			_key_buttons[slot].append(btn)
+			_key_buttons[slot][lane] = btn
 
 		var clear := Button.new()
 		clear.text = "X"
 		clear.custom_minimum_size = Vector2(40, KEY_BTN_SIZE.y)
-		clear.focus_mode = Control.FOCUS_NONE
 		clear.tooltip_text = "Quitar la tecla secundaria"
 		clear.pressed.connect(_on_clear.bind(lane))
 		grid.add_child(clear)
-		_clear_buttons.append(clear)
+		_clear_buttons[lane] = clear
 
 	return grid
 
@@ -121,7 +123,7 @@ func _build_grid() -> Control:
 func _build_preset_row(slot: int) -> Control:
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 6)
+	row.add_theme_constant_override("separation", NAV_GAP)
 
 	var label := Label.new()
 	label.text = "%s:" % Settings.SLOT_NAMES[slot]
@@ -134,7 +136,6 @@ func _build_preset_row(slot: int) -> Control:
 		var b := Button.new()
 		b.text = preset_name
 		b.custom_minimum_size = Vector2(96, 34)
-		b.focus_mode = Control.FOCUS_NONE
 		b.pressed.connect(_on_preset.bind(slot, preset_name))
 		row.add_child(b)
 
@@ -143,7 +144,6 @@ func _build_preset_row(slot: int) -> Control:
 		var none := Button.new()
 		none.text = "Ninguna"
 		none.custom_minimum_size = Vector2(96, 34)
-		none.focus_mode = Control.FOCUS_NONE
 		none.pressed.connect(_on_preset.bind(slot, ""))
 		row.add_child(none)
 
@@ -163,13 +163,12 @@ func _build_latency_row() -> Control:
 
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 6)
+	row.add_theme_constant_override("separation", NAV_GAP)
 	box.add_child(row)
 
 	var minus := Button.new()
 	minus.text = "-5 ms"
 	minus.custom_minimum_size = Vector2(80, 34)
-	minus.focus_mode = Control.FOCUS_NONE
 	minus.pressed.connect(_nudge_offset.bind(-5))
 	row.add_child(minus)
 
@@ -180,14 +179,12 @@ func _build_latency_row() -> Control:
 	var plus := Button.new()
 	plus.text = "+5 ms"
 	plus.custom_minimum_size = Vector2(80, 34)
-	plus.focus_mode = Control.FOCUS_NONE
 	plus.pressed.connect(_nudge_offset.bind(5))
 	row.add_child(plus)
 
 	var calibrate := Button.new()
 	calibrate.text = "Calibrar..."
 	calibrate.custom_minimum_size = Vector2(120, 34)
-	calibrate.focus_mode = Control.FOCUS_NONE
 	calibrate.pressed.connect(func() -> void:
 		get_tree().change_scene_to_file(CALIBRATION_SCENE))
 	row.add_child(calibrate)

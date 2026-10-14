@@ -11,6 +11,12 @@ var recording_title := ""
 # --- Modo juego: grabacion elegida de la biblioteca ---
 var selected_song: SongEntry = null
 
+# --- Modo roguelike ---
+## Partida en curso (null si no hay ninguna).
+var rogue_run: RogueRun = null
+## Cancion del roguelike preparada para la escena de juego (null = modo normal).
+var rogue_prepared: RoguePrepared = null
+
 
 func has_audio() -> bool:
 	return audio_stream != null

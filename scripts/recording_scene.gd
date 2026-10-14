@@ -4,6 +4,8 @@ const MENU_SCENE := "res://scenes/edit_menu.tscn"
 const SELECT_SCENE := "res://scenes/song_select.tscn"
 const PLAY_SCENE := "res://scenes/play_scene.tscn"
 const PAD_SIZE := Vector2(110, 110)
+## 16 px del sprite x 4: escala entera, el pixel art no se deforma.
+const PAD_ICON_PX := 64
 ## Margen antes de que arranque el audio, para colocar las manos.
 const COUNTDOWN_S := 3.0
 
@@ -13,7 +15,9 @@ var _diag_label: Label
 var _count_label: Label
 var _status_label: Label
 var _progress: ProgressBar
+## Indexados por id de carril, no por posicion en pantalla.
 var _pads: Array[Panel] = []
+var _pad_icons: Array[Control] = []
 var _action_btn: Button
 
 var _countdown: Label
@@ -49,7 +53,7 @@ func _ready() -> void:
 
 func _build_ui() -> void:
 	var bg := ColorRect.new()
-	bg.color = Color("14101f")
+	bg.color = GuiTheme.BG
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
@@ -82,7 +86,7 @@ func _build_ui() -> void:
 
 	_progress = ProgressBar.new()
 	_progress.show_percentage = false
-	_progress.custom_minimum_size = Vector2(0, 18)
+	_progress.custom_minimum_size = Vector2(0, 24)   # alto exacto de la barra del atlas
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 60)
 	margin.add_theme_constant_override("margin_right", 60)
@@ -94,30 +98,42 @@ func _build_ui() -> void:
 	pads.add_theme_constant_override("separation", 14)
 	root.add_child(pads)
 
-	for i in Lanes.COUNT:
+	_pads.resize(Lanes.COUNT)
+	_pad_icons.resize(Lanes.COUNT)
+	for lane in Lanes.DISPLAY_ORDER:
 		var pad := Panel.new()
 		pad.custom_minimum_size = PAD_SIZE
-		_style_pad(pad, i, false)
-		var arrow := Label.new()
-		arrow.text = Lanes.ARROWS[i]
-		arrow.set_anchors_preset(Control.PRESET_FULL_RECT)
-		arrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		arrow.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		arrow.add_theme_font_size_override("font_size", 44)
-		pad.add_child(arrow)
+		_style_pad(pad, lane, false)
+
+		var layout := VBoxContainer.new()
+		layout.set_anchors_preset(Control.PRESET_FULL_RECT)
+		layout.offset_top = 8
+		layout.offset_bottom = -6
+		layout.add_theme_constant_override("separation", 2)
+		layout.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pad.add_child(layout)
+
+		var icon_box := CenterContainer.new()
+		icon_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		icon_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		layout.add_child(icon_box)
+		var icon := KeyIcons.make_icon(lane, PAD_ICON_PX)
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if icon is TextureRect:
+			icon.modulate = Color.WHITE.lerp(Lanes.COLORS[lane], PlayField.NOTE_TINT)
+		icon_box.add_child(icon)
 
 		# La tecla de cada carril es configurable, asi que se muestra en el pad.
 		var key := Label.new()
-		key.text = Lanes.key_label_pair(i)
-		key.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-		key.offset_top = -26
+		key.text = Lanes.key_label_pair(lane)
 		key.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		key.add_theme_font_size_override("font_size", 14)
-		key.modulate = Color(1, 1, 1, 0.65)
-		pad.add_child(key)
+		key.add_theme_font_size_override("font_size", 13)
+		key.modulate = Color(1, 1, 1, 0.7)
+		layout.add_child(key)
 
 		pads.add_child(pad)
-		_pads.append(pad)
+		_pads[lane] = pad
+		_pad_icons[lane] = icon
 
 	_count_label = Label.new()
 	_count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -133,20 +149,35 @@ func _build_ui() -> void:
 
 	_action_btn = Button.new()
 	_action_btn.text = "Cancelar  (Esc)"
-	_action_btn.custom_minimum_size = Vector2(280, 42)
+	_action_btn.theme_type_variation = "BigButton"
+	_action_btn.custom_minimum_size = Vector2(300, 52)
 	_action_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	_action_btn.focus_mode = Control.FOCUS_NONE  # que no se coma las flechas
+	# Mientras se graba, WASD, flechas y espacio son carriles: un boton con foco
+	# se los comeria. Esc ya cancela/termina sin necesidad de foco.
+	_action_btn.focus_mode = Control.FOCUS_NONE
 	_action_btn.pressed.connect(_on_action_pressed)
 	root.add_child(_action_btn)
 
 
 func _style_pad(pad: Panel, lane: int, lit: bool) -> void:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Lanes.COLORS[lane] if lit else Lanes.COLORS[lane].darkened(0.75)
-	sb.border_color = Lanes.COLORS[lane]
-	sb.set_border_width_all(3)
-	sb.set_corner_radius_all(10)
-	pad.add_theme_stylebox_override("panel", sb)
+	var color := Lanes.COLORS[lane]
+	if GuiTheme.available():
+		# Visor de LCD sin tenir: multiplicar el morado por el color del carril
+		# cambia el tono (el cian sale verde, igual que "arriba"). El color va en
+		# la tecla, igual que en las notas del juego.
+		var tint := GuiTheme.FOCUS_TINT if lit else Color.WHITE
+		pad.add_theme_stylebox_override("panel", GuiTheme.lcd(tint))
+	else:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = color.darkened(0.35) if lit else color.darkened(0.8)
+		sb.border_color = color
+		sb.set_border_width_all(3)
+		pad.add_theme_stylebox_override("panel", sb)
+
+	# La tecla del icono se hunde mientras se mantiene pulsada.
+	if lane < _pad_icons.size() and _pad_icons[lane] is TextureRect:
+		var variant := KeyIcons.Variant.PRESSED_OUTLINE if lit else KeyIcons.Variant.NORMAL
+		(_pad_icons[lane] as TextureRect).texture = KeyIcons.texture(lane, variant, true)
 
 
 func _process(delta: float) -> void:
@@ -208,6 +239,8 @@ func _on_recording_finished(chart: Chart) -> void:
 	if song_dir == "":
 		_status_label.text = "ERROR al guardar la grabacion (mira la consola)"
 		_action_btn.text = "Volver"
+		_action_btn.focus_mode = Control.FOCUS_ALL
+		_action_btn.grab_focus()
 		return
 
 	Session.selected_song = null
@@ -217,12 +250,16 @@ func _on_recording_finished(chart: Chart) -> void:
 
 	var play := Button.new()
 	play.text = "JUGARLA AHORA"
-	play.custom_minimum_size = Vector2(260, 46)
+	play.theme_type_variation = "BigButton"
+	play.custom_minimum_size = Vector2(300, 52)
 	play.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	play.focus_mode = Control.FOCUS_NONE
 	play.pressed.connect(_on_play_now.bind(title))
 	_action_btn.get_parent().add_child(play)
 	_action_btn.get_parent().move_child(play, _action_btn.get_index())
+
+	# Grabacion terminada: ya no hay carriles que proteger, se puede navegar.
+	_action_btn.focus_mode = Control.FOCUS_ALL
+	play.grab_focus()
 
 
 func _on_play_now(title: String) -> void:

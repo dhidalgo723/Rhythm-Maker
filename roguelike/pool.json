@@ -1,0 +1,28 @@
+{
+  "songs": [
+    {
+      "id": "prueba_pequena",
+      "title": "Sin conexión (prueba, 30 s)",
+      "size": "small",
+      "chart": "songs/prueba_pequena.chart.json"
+    },
+    {
+      "id": "prueba_mediana",
+      "title": "Sin conexión (prueba, 1 min)",
+      "size": "medium",
+      "chart": "songs/prueba_mediana.chart.json"
+    },
+    {
+      "id": "prueba_grande",
+      "title": "Sin conexión (prueba, 2 min)",
+      "size": "big",
+      "chart": "songs/prueba_grande.chart.json"
+    },
+    {
+      "id": "prueba_jefe",
+      "title": "Sin conexión (prueba, jefe 2 min)",
+      "size": "boss",
+      "chart": "songs/prueba_jefe.chart.json"
+    }
+  ]
+}

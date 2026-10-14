@@ -16,7 +16,15 @@ static var FILE_FILTERS := PackedStringArray([
 static func load_stream(path: String) -> AudioStream:
 	var ext := path.get_extension().to_lower()
 	var stream: AudioStream = null
+	# Audio que viene con el juego (canciones del roguelike): en un juego
+	# exportado el .wav original no esta, solo su version importada, que se
+	# carga como recurso.
+	if path.begins_with("res://") and ResourceLoader.exists(path):
+		stream = load(path) as AudioStream
+		ext = ""
 	match ext:
+		"":
+			pass
 		"wav":
 			stream = AudioStreamWAV.load_from_file(path)
 		"mp3":

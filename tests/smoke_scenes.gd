@@ -17,6 +17,8 @@ const SCENES := [
 	"res://scenes/calibration_scene.tscn",
 	"res://scenes/recording_scene.tscn",
 	"res://scenes/play_scene.tscn",
+	"res://scenes/rogue_menu.tscn",
+	"res://scenes/rogue_shop.tscn",
 ]
 
 const FRAMES_PER_SCENE := 30
@@ -30,11 +32,19 @@ func _ready() -> void:
 	else:
 		Session.selected_song = songs[0]
 	Session.recording_title = "smoke"
+	# La tienda y el mapa del roguelike necesitan una partida en curso: sin
+	# ella la tienda se va sola al menu (y se llevaria por delante este test).
+	var run := RogueRun.create(RoguePool.load_pool(), 1)
+	run.state = RogueRun.State.SHOP
+	run.money = 10
+	run.roll_offers()
+	Session.rogue_run = run
 	Session.set_audio(ProjectSettings.globalize_path("res://tests/test_tone.wav"))
 
 	for path in SCENES:
 		await _run_scene(path)
 
+	Session.rogue_run = null
 	print("SCENES OK")
 	get_tree().quit(0)
 

@@ -6,13 +6,14 @@ const EDIT_SCENE := "res://scenes/edit_menu.tscn"
 
 var _list: VBoxContainer
 var _empty: Label
+var _back: Button
 
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 
 	var bg := ColorRect.new()
-	bg.color = Color("14101f")
+	bg.color = GuiTheme.BG
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
@@ -32,6 +33,7 @@ func _ready() -> void:
 	title.text = "ELIGE UNA GRABACION"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 32)
+	title.add_theme_color_override("font_color", GuiTheme.TEXT_FOCUS)
 	root.add_child(title)
 
 	_empty = Label.new()
@@ -40,10 +42,16 @@ func _ready() -> void:
 	_empty.text = "No hay grabaciones todavia.\nVe a MODO EDICION para crear una."
 	root.add_child(_empty)
 
+	# La lista va dentro de una placa oscura con tornillos.
+	var list_box := PanelContainer.new()
+	list_box.theme_type_variation = "InsetPanel"
+	list_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_child(list_box)
 	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	root.add_child(scroll)
+	# Al bajar con el teclado, la lista se desplaza sola hasta la cancion elegida.
+	scroll.follow_focus = true
+	list_box.add_child(scroll)
 
 	_list = VBoxContainer.new()
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -55,7 +63,7 @@ func _ready() -> void:
 	speed_row.add_theme_constant_override("separation", 10)
 	root.add_child(speed_row)
 	var speed_lbl := Label.new()
-	speed_lbl.text = "Velocidad de caida: %d ms" % Settings.travel_time_ms
+	speed_lbl.text = _lead_text()
 	speed_row.add_child(speed_lbl)
 	var speed := HSlider.new()
 	speed.min_value = 500
@@ -66,16 +74,23 @@ func _ready() -> void:
 	speed.value_changed.connect(func(v: float) -> void:
 		Settings.travel_time_ms = int(v)
 		Settings.save_settings()
-		speed_lbl.text = "Velocidad de caida: %d ms" % Settings.travel_time_ms)
+		speed_lbl.text = _lead_text())
 	speed_row.add_child(speed)
 
-	var back := Button.new()
-	back.text = "Volver al menu"
-	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	back.pressed.connect(func() -> void: get_tree().change_scene_to_file(MENU_SCENE))
-	root.add_child(back)
+	_back = Button.new()
+	_back.text = "Volver al menu"
+	_back.custom_minimum_size = Vector2(220, 40)
+	_back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_back.pressed.connect(func() -> void: get_tree().change_scene_to_file(MENU_SCENE))
+	root.add_child(_back)
 
 	_refresh()
+
+
+## "Velocidad 500 ms" se leia al reves (numero bajo = las notas salen tarde),
+## asi que se dice directamente cuanto antes aparecen.
+static func _lead_text() -> String:
+	return "Las notas aparecen %.1f s antes (mas = las ves antes)" % (Settings.travel_time_ms / 1000.0)
 
 
 func _refresh() -> void:
@@ -85,9 +100,11 @@ func _refresh() -> void:
 	var songs := Library.list_songs()
 	_empty.visible = songs.is_empty()
 
+	var first: Button = null
 	for entry in songs:
 		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 8)
+		# Hueco para el cursor de seleccion cuando esta en la X.
+		row.add_theme_constant_override("separation", 22)
 		_list.add_child(row)
 
 		var play := Button.new()
@@ -99,6 +116,8 @@ func _refresh() -> void:
 			entry.title(), entry.note_count(), secs / 60, secs % 60]
 		play.pressed.connect(_on_play.bind(entry))
 		row.add_child(play)
+		if first == null:
+			first = play
 
 		var del := Button.new()
 		del.text = "X"
@@ -106,6 +125,10 @@ func _refresh() -> void:
 		del.tooltip_text = "Borrar esta grabacion"
 		del.pressed.connect(_on_delete.bind(entry))
 		row.add_child(del)
+
+	# Diferido: los botones viejos se liberan al final del frame.
+	var target := first if first != null else _back
+	target.grab_focus.call_deferred()
 
 
 func _on_play(entry: SongEntry) -> void:

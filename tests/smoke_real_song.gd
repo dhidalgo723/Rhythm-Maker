@@ -5,7 +5,6 @@ extends Node
 ## Correr: godot --headless --path . res://tests/smoke_real_song.tscn
 
 const SECONDS := 25.0
-const KEYS := [KEY_LEFT, KEY_DOWN, KEY_UP, KEY_RIGHT]
 
 
 func _ready() -> void:
@@ -37,7 +36,8 @@ func _ready() -> void:
 	pm.stop()
 
 	var expected := next
-	var judged := pm.perfects + pm.goods + pm.misses
+	var judged := pm.judged()
+	var perfects := pm.count(Judgement.Kind.PERFECT)
 	var worst := 0.0
 	var mean := 0.0
 	for d in deltas:
@@ -48,14 +48,16 @@ func _ready() -> void:
 
 	print("cancion    '%s'  (%d notas en total)" % [entry.title(), notes.size()])
 	print("jugadas    %d notas en %.0f s" % [expected, SECONDS])
-	print("resultado  perfect=%d good=%d fallos=%d  precision=%.1f%%" % [
-		pm.perfects, pm.goods, pm.misses, pm.accuracy()])
+	var tiers: Array[String] = []
+	for kind in Judgement.ORDER:
+		tiers.append("%s=%d" % [Judgement.NAMES[kind], pm.count(kind)])
+	print("resultado  %s  precision=%.1f%%" % [" ".join(tiers), pm.accuracy()])
 	print("desfase    medio %+.1f ms, peor %.1f ms" % [mean, worst])
 
 	# El bot pulsa en el frame siguiente a la nota, asi que su precision depende
 	# del framerate: bajo carga algun hit cae en GOOD. Lo que se exige es que
 	# ninguna nota se pierda y que la gran mayoria sean PERFECT.
-	var ok := pm.misses == 0 and judged == expected 		and pm.perfects >= int(expected * 0.9)
+	var ok := pm.misses == 0 and judged == expected 		and perfects >= int(expected * 0.9)
 	if not ok:
 		print("  esperadas %d juzgadas, hubo %d; perfect minimo %d" % [
 			expected, judged, int(expected * 0.9)])
@@ -63,12 +65,14 @@ func _ready() -> void:
 	get_tree().quit(0 if ok else 1)
 
 
+## Pulsa la tecla que el jugador tiene asignada de verdad, no una fija.
 func _press(lane: int) -> void:
+	var key := Settings.binding(Settings.SLOT_PRIMARY, lane)
 	var down := InputEventKey.new()
-	down.physical_keycode = KEYS[lane]
+	down.physical_keycode = key
 	down.pressed = true
 	Input.parse_input_event(down)
 	var up := InputEventKey.new()
-	up.physical_keycode = KEYS[lane]
+	up.physical_keycode = key
 	up.pressed = false
 	Input.parse_input_event(up)

@@ -4,13 +4,23 @@ extends Node
 
 const CONFIG_PATH := "user://settings.cfg"
 
+## Version del formato de settings.cfg. Sube cuando un cambio necesita migrar
+## lo que ya hay guardado (ver load_settings).
+##   1: original, 4 carriles
+##   2: carril espacio y notas visibles con mas antelacion
+const SETTINGS_VERSION := 2
+
 ## Offset de calibracion, en ms.
 ## Positivo = los inputs del usuario llegan TARDE respecto al audio que oye.
 ## Se resta al timestamp del input, tanto al grabar como al juzgar hits.
 var offset_ms := 0
 
 ## Cuanto tarda una nota en cruzar la pantalla, en ms (scroll speed).
-var travel_time_ms := 1200
+## Mas alto = las notas aparecen antes y caen mas despacio.
+const DEFAULT_TRAVEL_MS := 1500
+## El valor por defecto hasta la version 1, para reconocerlo al migrar.
+const OLD_DEFAULT_TRAVEL_MS := 1200
+var travel_time_ms := DEFAULT_TRAVEL_MS
 
 var last_audio_dir := "user://"
 
@@ -30,15 +40,21 @@ const SLOT_SECONDARY := 1
 const SLOT_COUNT := 2
 const SLOT_NAMES: Array[String] = ["Principal", "Secundaria"]
 
-## Indice = lane: 0=izq, 1=abajo, 2=arriba, 3=derecha
-const DEFAULT_KEYS: Array[int] = [KEY_LEFT, KEY_DOWN, KEY_UP, KEY_RIGHT]
-const DEFAULT_KEYS_ALT: Array[int] = [KEY_A, KEY_S, KEY_W, KEY_D]
-
 const NO_KEY := 0
 
+## Indice = id de carril: 0=izq, 1=abajo, 2=arriba, 3=derecha, 4=espacio
+const DEFAULT_KEYS: Array[int] = [KEY_LEFT, KEY_DOWN, KEY_UP, KEY_RIGHT, KEY_SPACE]
+const DEFAULT_KEYS_ALT: Array[int] = [KEY_A, KEY_S, KEY_W, KEY_D, NO_KEY]
+
+## Carriles que cubren los presets: solo las direcciones. Un preset va de como
+## colocas la mano en las flechas; si tambien pisara la tecla del espacio, elegir
+## WASD te cambiaria el espacio sin avisar.
+const DIRECTION_LANES: Array[int] = [0, 1, 2, 3]
+
+## Teclas de los DIRECTION_LANES, en ese orden.
 const PRESETS := {
-	"Flechas": DEFAULT_KEYS,
-	"WASD": DEFAULT_KEYS_ALT,
+	"Flechas": [KEY_LEFT, KEY_DOWN, KEY_UP, KEY_RIGHT],
+	"WASD": [KEY_A, KEY_S, KEY_W, KEY_D],
 	"DFJK": [KEY_D, KEY_F, KEY_J, KEY_K],
 }
 
@@ -60,16 +76,27 @@ func load_settings() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(CONFIG_PATH) != OK:
 		return
+	var version := int(cfg.get_value("meta", "version", 1))
 	offset_ms = int(cfg.get_value("timing", "offset_ms", offset_ms))
 	travel_time_ms = int(cfg.get_value("gameplay", "travel_time_ms", travel_time_ms))
 	last_audio_dir = str(cfg.get_value("paths", "last_audio_dir", last_audio_dir))
 
 	# "key_bindings" es la clave que ya usaban los settings de una sola tecla,
 	# asi que una config antigua se lee sola y hereda la secundaria por defecto.
-	var primary := _sanitize_slot(cfg.get_value("input", "key_bindings", DEFAULT_KEYS), false)
+	var raw_primary: Variant = cfg.get_value("input", "key_bindings", DEFAULT_KEYS)
+	var raw_secondary: Variant = cfg.get_value("input", "key_bindings_alt", DEFAULT_KEYS_ALT)
+	if version < 2:
+		raw_primary = _add_space_lane(raw_primary, KEY_SPACE)
+		raw_secondary = _add_space_lane(raw_secondary, NO_KEY)
+		# Solo se toca si seguia en el valor por defecto antiguo: si el jugador
+		# lo habia cambiado a mano, su eleccion manda.
+		if travel_time_ms == OLD_DEFAULT_TRAVEL_MS:
+			travel_time_ms = DEFAULT_TRAVEL_MS
+
+	var primary := _sanitize_slot(raw_primary, false)
 	if primary.is_empty():
 		primary = DEFAULT_KEYS.duplicate()
-	var secondary := _sanitize_slot(cfg.get_value("input", "key_bindings_alt", DEFAULT_KEYS_ALT), true)
+	var secondary := _sanitize_slot(raw_secondary, true)
 	if secondary.is_empty():
 		secondary = DEFAULT_KEYS_ALT.duplicate()
 
@@ -81,9 +108,14 @@ func load_settings() -> void:
 	key_bindings = primary
 	key_bindings_alt = secondary
 
+	# Dejar la migracion escrita para no repetirla en cada arranque.
+	if version < SETTINGS_VERSION:
+		save_settings()
+
 
 func save_settings() -> void:
 	var cfg := ConfigFile.new()
+	cfg.set_value("meta", "version", SETTINGS_VERSION)
 	cfg.set_value("timing", "offset_ms", offset_ms)
 	cfg.set_value("gameplay", "travel_time_ms", travel_time_ms)
 	cfg.set_value("paths", "last_audio_dir", last_audio_dir)
@@ -167,18 +199,30 @@ func clear_binding(slot: int, lane: int) -> String:
 	return ""
 
 
-## Aplica un preset a un slot. "" limpia la secundaria entera.
+## Aplica un preset a las flechas de un slot. "" vacia la secundaria entera.
+## El carril espacio no lo toca un preset (ver DIRECTION_LANES).
 ## Devuelve "" si fue bien, o el motivo del rechazo.
-func apply_preset(slot: int, name: String) -> String:
-	var candidate: Array[int] = []
-	if name == "":
+func apply_preset(slot: int, preset_name: String) -> String:
+	var candidate: Array[int] = slot_keys(slot).duplicate()
+	if preset_name == "":
 		if slot == SLOT_PRIMARY:
 			return "La tecla principal no se puede quitar"
-		candidate.resize(Lanes.COUNT)   # todo NO_KEY
-	elif PRESETS.has(name):
-		candidate = _sanitize_slot(PRESETS[name], false)
-	if candidate.is_empty():
+		candidate.fill(NO_KEY)
+	elif PRESETS.has(preset_name):
+		var keys: Array = PRESETS[preset_name]
+		for i in DIRECTION_LANES.size():
+			candidate[DIRECTION_LANES[i]] = keys[i]
+	else:
 		return "Preset desconocido"
+
+	# Dentro de la ranura: si el espacio tenia una tecla que el preset reparte a
+	# una flecha, el espacio la suelta (o, si es la principal, se rechaza: no
+	# puede quedarse vacio).
+	var space_key := candidate[Lanes.SPACE]
+	if space_key != NO_KEY and candidate.count(space_key) > 1:
+		if slot == SLOT_PRIMARY:
+			return "El espacio usa %s, cambialo primero" % Lanes.key_name(space_key)
+		candidate[Lanes.SPACE] = NO_KEY
 
 	var other := SLOT_SECONDARY if slot == SLOT_PRIMARY else SLOT_PRIMARY
 	var other_keys := slot_keys(other)
@@ -203,12 +247,18 @@ func apply_preset(slot: int, name: String) -> String:
 	return ""
 
 
-## Nombre del preset que coincide con las teclas del slot, o "" si es a medida.
+## Nombre del preset que coincide con las flechas del slot, o "" si es a medida.
 func current_preset(slot: int) -> String:
 	var keys := slot_keys(slot)
-	for name in PRESETS:
-		if keys == _sanitize_slot(PRESETS[name], false):
-			return name
+	for preset_name in PRESETS:
+		var preset: Array = PRESETS[preset_name]
+		var matches := true
+		for i in DIRECTION_LANES.size():
+			if keys[DIRECTION_LANES[i]] != preset[i]:
+				matches = false
+				break
+		if matches:
+			return preset_name
 	return ""
 
 
@@ -217,6 +267,18 @@ func slot_is_empty(slot: int) -> bool:
 		if k != NO_KEY:
 			return false
 	return true
+
+
+## Las configs de antes del carril espacio guardaban 4 teclas por ranura: se
+## completa con la tecla por defecto del espacio. Si ya estaba usada en otro
+## carril, se deja vacia y el saneado posterior decide (la principal no puede
+## quedarse sin tecla, asi que en ese caso vuelve a los valores por defecto).
+static func _add_space_lane(raw: Variant, space_key: int) -> Variant:
+	if raw is Array and (raw as Array).size() == Lanes.COUNT - 1:
+		var upgraded := (raw as Array).duplicate()
+		upgraded.append(space_key if not space_key in upgraded else NO_KEY)
+		return upgraded
+	return raw
 
 
 ## Un slot valido tiene exactamente COUNT teclas y ninguna repetida. Solo la

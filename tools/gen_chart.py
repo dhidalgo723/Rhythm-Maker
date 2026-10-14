@@ -108,11 +108,105 @@ def loudness_mask(x, sr, times_s, floor_ratio=0.12):
 EASY_PATTERN = [0, 1, 2, 3, 2, 1, 0, 1, 2, 3, 3, 2, 1, 0, 0, 1]
 
 
+DIRECTION_LANES = [0, 1, 2, 3]
+SPACE_LANE = 4
+
+
+def exact_notes(env, fps, bpm, offset, dur, n, rng, space=0.15, chords=0.05, holds=0.04):
+    """Exactamente `n` notas antes de `dur` segundos, sobre la rejilla del beat.
+
+    Se prefieren las negras y, entre ellas, las que caen sobre un golpe fuerte;
+    si no caben, se completan con corcheas. Una parte de las notas son acordes
+    (dos a la vez), notas largas o el carril espacio, para que haya de todo.
+    """
+    beat = 60.0 / bpm
+    quarters = np.arange(offset, dur - 0.4, beat)
+    quarters = quarters[quarters > 1.0]
+    eighths = quarters + beat / 2.0
+    eighths = eighths[eighths < dur - 0.4]
+
+    def strength(t):
+        i = int(t * fps)
+        return float(env[max(0, i - 2):i + 3].max()) if i < len(env) else 0.0
+
+    n_chords = int(round(n * chords))
+    n_times = n - n_chords
+
+    # Reparto por compases: cada compas recibe su parte, asi la densidad es
+    # pareja y una intro suave tambien lleva notas (elegir solo por fuerza las
+    # amontonaria donde la musica pega mas). Dentro del compas ganan las negras
+    # y, entre ellas, los golpes mas fuertes.
+    bar = beat * 4
+    bars = [b for b in np.arange(offset, dur - 0.4, bar)]
+    groups = []
+    for b in bars:
+        group = [(1, strength(t), t) for t in quarters if b <= t < b + bar]
+        group += [(0, strength(t), t) for t in eighths if b <= t < b + bar]
+        if group:
+            group.sort(reverse=True)
+            groups.append(group)
+    if n_times > sum(len(g) for g in groups):
+        raise SystemExit("no caben %d notas en %.0f s a %.1f BPM" % (n, dur, bpm))
+    # Cuota por compas; el resto, a los compases que mas suenan.
+    quota = [n_times // len(groups)] * len(groups)
+    by_energy = sorted(range(len(groups)), key=lambda i: -sum(c[1] for c in groups[i][:4]))
+    for i in by_energy[:n_times - sum(quota)]:
+        quota[i] += 1
+    # Si un compas no tiene sitio, lo que sobra pasa a otros.
+    spill = 0
+    for i, g in enumerate(groups):
+        if quota[i] > len(g):
+            spill += quota[i] - len(g)
+            quota[i] = len(g)
+    for i in by_energy:
+        while spill > 0 and quota[i] < len(groups[i]):
+            quota[i] += 1
+            spill -= 1
+    times = sorted(t for g, q in zip(groups, quota) for _, _, t in g[:q])
+
+    notes = []
+    lane = rng.choice(DIRECTION_LANES)
+    for t in times:
+        if rng.random() < space:
+            l = SPACE_LANE
+        else:
+            lane = (lane + rng.choice([-1, 1, 1, 2, -2])) % 4
+            l = lane
+        notes.append({"t": int(round(t * 1000)), "lane": l})
+
+    # Acordes: a una nota de direccion se le suma otra a la vez en otro carril.
+    singles = [i for i, nt in enumerate(notes) if nt["lane"] != SPACE_LANE]
+    chord_extra = []
+    for i in rng.sample(singles, min(n_chords, len(singles))):
+        other = rng.choice([d for d in DIRECTION_LANES if d != notes[i]["lane"]])
+        chord_extra.append({"t": notes[i]["t"], "lane": other})
+    chord_times = {c["t"] for c in chord_extra}
+    notes += chord_extra
+    notes.sort(key=lambda nt: (nt["t"], nt["lane"]))
+
+    # Largas: notas sueltas que se mantienen hasta poco antes de la siguiente
+    # de su carril (como mucho 2 beats).
+    by_lane = {}
+    for nt in notes:
+        by_lane.setdefault(nt["lane"], []).append(nt)
+    loose = [nt for nt in notes if nt["t"] not in chord_times]
+    for nt in rng.sample(loose, min(int(round(n * holds)), len(loose))):
+        lane_notes = by_lane[nt["lane"]]
+        k = lane_notes.index(nt)
+        gap = (lane_notes[k + 1]["t"] - nt["t"] - 150) if k + 1 < len(lane_notes) else int(dur * 1000) - nt["t"] - 300
+        length = min(gap, int(2 * beat * 1000))
+        if length >= 300:
+            nt["d"] = length
+    return notes
+
+
 def main():
     if len(sys.argv) < 3:
         raise SystemExit(__doc__)
     src, dst = sys.argv[1], sys.argv[2]
     title, every, difficulty = None, 1, "facil"
+    exact, duration, seed = 0, 0.0, 1
+    bpm_arg = offset_arg = None
     args = sys.argv[3:]
     for i, a in enumerate(args):
         if a == '--titulo':
@@ -121,19 +215,39 @@ def main():
             every = int(args[i + 1])
         elif a == '--dificultad':
             difficulty = args[i + 1]
+        elif a == '--notas':
+            exact = int(args[i + 1])
+        elif a == '--duracion':
+            duration = float(args[i + 1])
+        elif a == '--semilla':
+            seed = int(args[i + 1])
+        elif a == '--bpm':
+            bpm_arg = float(args[i + 1])
+        elif a == '--offset':
+            offset_arg = float(args[i + 1])
 
     x, sr = read_mono(src)
     dur = len(x) / sr
     env, fps = onset_envelope(x, sr)
-    bpm, offset, ratio = detect_beat(env, fps)
+    if bpm_arg is not None and offset_arg is not None:
+        bpm, offset, ratio = bpm_arg, offset_arg, grid_ratio(env, fps, bpm_arg, offset_arg)
+    else:
+        bpm, offset, ratio = detect_beat(env, fps)
     beat = 60.0 / bpm
 
-    beats = np.arange(offset, dur - 0.5, beat)[::every]
-    beats = beats[beats > 1.0]
-    beats = beats[loudness_mask(x, sr, beats)]
-
-    notes = [{"t": int(round(t * 1000)), "lane": EASY_PATTERN[i % len(EASY_PATTERN)]}
-             for i, t in enumerate(beats)]
+    end_ms = 0
+    if exact > 0:
+        import random
+        rng = random.Random(seed)
+        length = min(duration, dur) if duration > 0 else dur
+        notes = exact_notes(env, fps, bpm, offset, length, exact, rng)
+        end_ms = int(round(length * 1000))
+    else:
+        beats = np.arange(offset, dur - 0.5, beat)[::every]
+        beats = beats[beats > 1.0]
+        beats = beats[loudness_mask(x, sr, beats)]
+        notes = [{"t": int(round(t * 1000)), "lane": EASY_PATTERN[i % len(EASY_PATTERN)]}
+                 for i, t in enumerate(beats)]
 
     chart = {
         "version": 1,
@@ -142,15 +256,24 @@ def main():
         "bpm": round(bpm, 2),
         "offset_ms": 0,
         "difficulty": difficulty,
+        "end_ms": end_ms,
+        "beat_offset_ms": int(round(offset * 1000)),
         "notes": notes,
     }
     with open(dst, 'w', encoding='utf-8') as f:
-        json.dump(chart, f, indent=2)
+        json.dump(chart, f, indent=2, ensure_ascii=False)
 
-    print("duracion    %.1f s" % dur)
+    print("duracion    %.1f s%s" % (dur, ("  (chart hasta %.1f s)" % (end_ms / 1000)) if end_ms else ""))
     print("bpm         %.2f  (beat %.1f ms, offset %.0f ms)" % (bpm, beat * 1000, offset * 1000))
     print("enganche    %.2fx energia on-beat vs anti-fase  (>2 es solido)" % ratio)
-    print("notas       %d, una cada %d beat(s) = %.0f ms" % (len(notes), every, beat * every * 1000))
+    if exact:
+        lanes = {}
+        for nt in notes:
+            lanes[nt["lane"]] = lanes.get(nt["lane"], 0) + 1
+        print("notas       %d (pedidas %d) | largas %d | por carril %s" % (
+            len(notes), exact, sum(1 for nt in notes if "d" in nt), dict(sorted(lanes.items()))))
+    else:
+        print("notas       %d, una cada %d beat(s) = %.0f ms" % (len(notes), every, beat * every * 1000))
     print("escrito en  %s" % dst)
 
 

@@ -40,7 +40,7 @@ func _process(_d: float) -> void:
 	if _next < TARGETS.size() and t >= TARGETS[_next]:
 		_expected.append(t)
 		var ev := InputEventKey.new()
-		ev.physical_keycode = [KEY_LEFT, KEY_DOWN, KEY_UP, KEY_RIGHT][_next % 4]
+		ev.physical_keycode = Settings.binding(Settings.SLOT_PRIMARY, _next % Lanes.COUNT)
 		ev.pressed = true
 		Input.parse_input_event(ev)
 		_next += 1

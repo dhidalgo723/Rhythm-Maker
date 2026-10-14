@@ -3,6 +3,8 @@ extends Control
 ## Pantalla de calibracion de latencia.
 
 const SETTINGS_SCENE := "res://scenes/settings_scene.tscn"
+## 16 px de la bolita x 7: escala entera, el pixel art no se deforma.
+const PULSE_PX := 112
 
 var _cal: CalibrationManager
 
@@ -30,11 +32,12 @@ func _ready() -> void:
 	_cal.finished.connect(_on_finished)
 
 	_refresh()
+	_start_btn.grab_focus.call_deferred()
 
 
 func _build_ui() -> void:
 	var bg := ColorRect.new()
-	bg.color = Color("14101f")
+	bg.color = GuiTheme.BG
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
@@ -44,7 +47,9 @@ func _build_ui() -> void:
 	root.add_theme_constant_override("separation", 10)
 	add_child(root)
 
-	root.add_child(_label("CALIBRACION DE LATENCIA", 32))
+	var title := _label("CALIBRACION DE LATENCIA", 32)
+	title.add_theme_color_override("font_color", GuiTheme.TEXT_FOCUS)
+	root.add_child(title)
 	_instructions = _label(
 		"Toca ESPACIO (o cualquier flecha del juego) justo cuando oigas cada click.", 15)
 	root.add_child(_instructions)
@@ -56,8 +61,11 @@ func _build_ui() -> void:
 	# Circulo que late con cada beat: referencia visual, pero la buena es el oido.
 	var center := CenterContainer.new()
 	root.add_child(center)
+	# Piloto del aparato: apagado en reposo, se enciende en amarillo con cada
+	# click. Se dibuja en vez de sacarlo del atlas: las bolitas del atlas miden
+	# 11 px y a este tamano saldrian borrosas.
 	_pulse = Panel.new()
-	_pulse.custom_minimum_size = Vector2(120, 120)
+	_pulse.custom_minimum_size = Vector2(PULSE_PX, PULSE_PX)
 	center.add_child(_pulse)
 	_paint_pulse(false)
 
@@ -74,11 +82,13 @@ func _build_ui() -> void:
 
 	root.add_child(_spacer(10))
 
-	_start_btn = _button("EMPEZAR", Vector2(260, 48))
+	_start_btn = _button("EMPEZAR", Vector2(280, 52))
+	_start_btn.theme_type_variation = "BigButton"
 	_start_btn.pressed.connect(_on_start)
 	root.add_child(_start_btn)
 
-	_save_btn = _button("GUARDAR OFFSET", Vector2(260, 44))
+	_save_btn = _button("GUARDAR OFFSET", Vector2(280, 52))
+	_save_btn.theme_type_variation = "BigButton"
 	_save_btn.pressed.connect(_on_save)
 	root.add_child(_save_btn)
 
@@ -107,18 +117,19 @@ static func _button(text: String, min_size: Vector2) -> Button:
 	b.text = text
 	b.custom_minimum_size = min_size
 	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	# Sin foco: si no, ESPACIO pulsaria el boton en vez de contar como toque.
-	b.focus_mode = Control.FOCUS_NONE
 	b.add_theme_font_size_override("font_size", 18)
 	return b
 
 
 func _paint_pulse(lit: bool) -> void:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color("ffd23f") if lit else Color("2a2340")
-	sb.border_color = Color("ffd23f")
-	sb.set_border_width_all(4)
-	sb.set_corner_radius_all(60)
+	sb.bg_color = GuiTheme.TEXT_FOCUS if lit else GuiTheme.BODY_DARK
+	sb.border_color = GuiTheme.BODY_LIGHT
+	sb.set_border_width_all(6)
+	sb.set_corner_radius_all(PULSE_PX / 2)
+	if lit:
+		sb.shadow_color = Color(GuiTheme.TEXT_FOCUS, 0.45)
+		sb.shadow_size = 18
 	_pulse.add_theme_stylebox_override("panel", sb)
 
 
@@ -148,6 +159,9 @@ func _on_start() -> void:
 	_result_label.text = ""
 	_detail_label.text = ""
 	_cal.start()
+	# Mientras se mide no puede haber nada con foco: ESPACIO y las flechas son
+	# los toques, y un boton con foco se los quedaria (ESPACIO lo pulsaria).
+	get_viewport().gui_release_focus()
 	_refresh()
 
 
@@ -170,6 +184,11 @@ func _on_finished() -> void:
 			_cal.taps(), spread, quality]
 	_progress_label.text = ""
 	_refresh()
+	# Se espera un poco antes de devolver el foco: el jugador puede dar un par
+	# de toques de mas al acabar y no deben pulsar un boton por accidente.
+	await get_tree().create_timer(0.6).timeout
+	if is_inside_tree() and not _cal.is_running():
+		(_save_btn if _measured else _start_btn).grab_focus()
 
 
 func _on_save() -> void:
