@@ -22,6 +22,9 @@ roguelike/songs/*.import
 # licencia). Sin ellos el juego usa el tema por defecto de Godot y teclas sin imagen.
 Keys/
 GUI/
+# Tipografia de terceros (Damien Gosset), sin licencia incluida. Sin ella el
+# juego usa la fuente por defecto de Godot.
+Fonts/
 
 # Audio que no es del proyecto
 tests/EL CONTROL ft.KafaeskeThief.wav

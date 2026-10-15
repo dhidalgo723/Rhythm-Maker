@@ -234,7 +234,7 @@ func _draw_note(pn: PlayNote, progress: float, rec_y: float, travel_px: float,
 
 ## Cambio de Clave: bajo cada receptor, la tecla que ahora lo activa.
 func _draw_key_labels(rec_y: float, reversed: bool, t: float) -> void:
-	var font := ThemeDB.fallback_font
+	var font := get_theme_default_font()
 	var dirs := Settings.DIRECTION_LANES
 	for lane in dirs:
 		# La tecla K activa el carril remap(K): buscamos la K que cae en este.

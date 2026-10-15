@@ -124,7 +124,9 @@ func _test_determinism() -> void:
 			_check(a.bosses[i].abilities.size() == 1 and
 				RogueCatalog.ABILITY[a.bosses[i].abilities[0]]["size"] == a.bosses[i].size,
 				"el jefe %d tiene una habilidad de su tamano" % i)
-		_check(not a.bosses[i].revealed, "las habilidades empiezan ocultas")
+		var visible := a.bosses[i].size in RogueCatalog.VISIBLE_SIZES
+		_check(a.bosses[i].revealed == visible,
+			"jefe %d: pequenos y medianos se ven, grandes y final empiezan ocultos" % i)
 	print("[semilla] la misma semilla da la misma partida")
 
 
@@ -244,6 +246,7 @@ func _test_shop() -> void:
 	var run := _run()
 	run.state = RogueRun.State.SHOP
 	run.money = 100
+	run.index = 2   # jefe grande: el unico que un Setlist tiene que revelar
 	run.offers.assign([
 		{"kind": RogueCatalog.ItemKind.SLOT, "id": "metronomo", "sold": false},
 		{"kind": RogueCatalog.ItemKind.SLOT, "id": "pausa", "sold": false},

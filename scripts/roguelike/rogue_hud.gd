@@ -66,7 +66,7 @@ func _build() -> void:
 
 	_boss_label = _label(prepared.boss.title(), 18, GuiTheme.TEXT_FOCUS)
 	col.add_child(_boss_label)
-	col.add_child(_label("Canción %d de %d" % [prepared.boss.index + 1, RogueCatalog.SEQUENCE.size()],
+	col.add_child(_label(Lang.t("Canción %d de %d") % [prepared.boss.index + 1, RogueCatalog.SEQUENCE.size()],
 		13, GuiTheme.TEXT_DIM))
 
 	col.add_child(_spacer(6))
@@ -93,8 +93,8 @@ func _build() -> void:
 	for id in prepared.boss.active_abilities():
 		abilities.append("• " + RogueCatalog.ability_name(id))
 	if prepared.boss.bribed != "":
-		abilities.append("• %s (sobornada)" % RogueCatalog.ability_name(prepared.boss.bribed))
-	_abilities_label = _label("Habilidades del jefe:\n" + "\n".join(abilities), 13, Color("ff9f43"))
+		abilities.append(Lang.t("• %s (sobornada)") % RogueCatalog.ability_name(prepared.boss.bribed))
+	_abilities_label = _label(Lang.t("Habilidades del jefe:\n") + "\n".join(abilities), 13, Color("ff9f43"))
 	col.add_child(_abilities_label)
 
 	# Avisos: centrados sobre los carriles, arriba.
@@ -134,38 +134,38 @@ func _refresh_slot() -> void:
 		return
 	var run := runtime.run
 	if run.slot_id == "":
-		_slot_label.text = "Ranura: vacía"
+		_slot_label.text = Lang.t("Ranura: vacía")
 		_slot_hint.text = ""
 	elif RogueRuntime._is_passive(run.slot_id):
-		_slot_label.text = "Ranura: %s" % runtime.slot_name()
-		_slot_hint.text = "Se activa solo"
+		_slot_label.text = Lang.t("Ranura: %s") % runtime.slot_name()
+		_slot_hint.text = Lang.t("Se activa solo")
 	else:
-		_slot_label.text = "Ranura: %s" % runtime.slot_name()
-		_slot_hint.text = "Intro o Shift izq. — %d uso(s)" % runtime.uses_left
+		_slot_label.text = Lang.t("Ranura: %s") % runtime.slot_name()
+		_slot_hint.text = Lang.t("Intro o Shift izq. — %d uso(s)") % runtime.uses_left
 
 
 func _process(delta: float) -> void:
 	if pm == null:
 		return
-	_target_label.text = "Objetivo: %d / %d" % [pm.score, prepared.target_score]
+	_target_label.text = Lang.t("Objetivo: %d / %d") % [pm.score, prepared.target_score]
 	_target_bar.value = mini(pm.score, prepared.target_score)
 
 	var t := pm.get_time_ms()
 	var lines: Array[String] = []
 	if runtime.pause_seconds_left() > 0.0:
-		lines.append("Pausa: %.1f s" % runtime.pause_seconds_left())
+		lines.append(Lang.t("Pausa: %.1f s") % runtime.pause_seconds_left())
 	for e in pm.rules.effects:
 		if not e.is_active(t) or not EFFECT_NAMES.has(e.id):
 			continue
 		var left := (e.end_ms - t) / 1000.0
-		var effect_name: String = EFFECT_NAMES[e.id]
+		var effect_name := Lang.t(EFFECT_NAMES[e.id])
 		lines.append(effect_name if is_inf(left) else "%s %.0f s" % [effect_name, left])
 	if pm.boss_shield_up():
-		lines.append("Escudo del jefe activo")
+		lines.append(Lang.t("Escudo del jefe activo"))
 	_effects_label.text = "\n".join(lines)
 	if runtime.run.slot_id != "" and not RogueRuntime._is_passive(runtime.run.slot_id):
-		_slot_hint.text = "¡Bloqueada!" if runtime.slot_blocked() \
-			else "Intro o Shift izq. — %d uso(s)" % runtime.uses_left
+		_slot_hint.text = Lang.t("¡Bloqueada!") if runtime.slot_blocked() \
+			else Lang.t("Intro o Shift izq. — %d uso(s)") % runtime.uses_left
 
 	if _notice_left > 0.0:
 		_notice_left -= delta

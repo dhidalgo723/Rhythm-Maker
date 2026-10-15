@@ -47,14 +47,14 @@ func _build_ui() -> void:
 	root.add_theme_constant_override("separation", 10)
 	add_child(root)
 
-	var title := _label("CALIBRACION DE LATENCIA", 32)
+	var title := _label(Lang.t("CALIBRACIÓN DE LATENCIA"), 32)
 	title.add_theme_color_override("font_color", GuiTheme.TEXT_FOCUS)
 	root.add_child(title)
 	_instructions = _label(
-		"Toca ESPACIO (o cualquier flecha del juego) justo cuando oigas cada click.", 15)
+		Lang.t("Toca ESPACIO (o cualquier flecha del juego) justo cuando oigas cada click."), 15)
 	root.add_child(_instructions)
 	root.add_child(_label(
-		"Los primeros %d clicks son solo para coger el ritmo, no cuentan."
+		Lang.t("Los primeros %d clicks son solo para coger el ritmo, no cuentan.")
 		% CalibrationManager.LEAD_BEATS, 13))
 	root.add_child(_spacer(14))
 
@@ -82,17 +82,17 @@ func _build_ui() -> void:
 
 	root.add_child(_spacer(10))
 
-	_start_btn = _button("EMPEZAR", Vector2(280, 52))
+	_start_btn = _button(Lang.t("EMPEZAR"), Vector2(280, 52))
 	_start_btn.theme_type_variation = "BigButton"
 	_start_btn.pressed.connect(_on_start)
 	root.add_child(_start_btn)
 
-	_save_btn = _button("GUARDAR OFFSET", Vector2(280, 52))
+	_save_btn = _button(Lang.t("GUARDAR OFFSET"), Vector2(280, 52))
 	_save_btn.theme_type_variation = "BigButton"
 	_save_btn.pressed.connect(_on_save)
 	root.add_child(_save_btn)
 
-	var back := _button("Volver", Vector2(200, 38))
+	var back := _button(Lang.t("Volver"), Vector2(200, 38))
 	back.pressed.connect(_go_back)
 	root.add_child(back)
 
@@ -140,7 +140,7 @@ func _process(delta: float) -> void:
 			_paint_pulse(false)
 
 	if _cal != null and _cal.is_running():
-		_progress_label.text = "Toques: %d   -   click %d de %d" % [
+		_progress_label.text = Lang.t("Toques: %d   -   click %d de %d") % [
 			_cal.taps(), clampi(_cal.current_beat() + 1, 0, _cal.total_beats()),
 			_cal.total_beats()]
 
@@ -151,7 +151,7 @@ func _on_beat(_index: int) -> void:
 
 
 func _on_tap(delta_ms: float, taps: int) -> void:
-	_detail_label.text = "ultimo toque: %+.0f ms   (%d medidos)" % [delta_ms, taps]
+	_detail_label.text = Lang.t("último toque: %+.0f ms   (%d medidos)") % [delta_ms, taps]
 
 
 func _on_start() -> void:
@@ -169,18 +169,18 @@ func _on_finished() -> void:
 	_measured = _cal.has_enough_taps()
 	if not _measured:
 		_result_label.add_theme_color_override("font_color", Color("f9393f"))
-		_result_label.text = "Pocos toques (%d de %d minimos)" % [
+		_result_label.text = Lang.t("Pocos toques (%d de %d mínimos)") % [
 			_cal.taps(), CalibrationManager.MIN_TAPS]
-		_detail_label.text = "Vuelve a intentarlo tocando en cada click."
+		_detail_label.text = Lang.t("Vuelve a intentarlo tocando en cada click.")
 	else:
 		var offset := _cal.offset_ms()
 		var spread := _cal.spread_ms()
 		_result_label.add_theme_color_override("font_color", Color("2ee6a8"))
-		_result_label.text = "Offset medido: %+d ms" % offset
+		_result_label.text = Lang.t("Offset medido: %+d ms") % offset
 		# Un spread alto significa toques irregulares: la mediana sigue siendo
 		# valida pero conviene avisar de que la medida es floja.
-		var quality := "buena" if spread < 25.0 else "irregular, repite para afinar"
-		_detail_label.text = "%d toques   -   variacion +-%.0f ms   -   medida %s" % [
+		var quality := Lang.t("buena") if spread < 25.0 else Lang.t("irregular, repite para afinar")
+		_detail_label.text = Lang.t("%d toques   -   variación +-%.0f ms   -   medida %s") % [
 			_cal.taps(), spread, quality]
 	_progress_label.text = ""
 	_refresh()
@@ -196,14 +196,14 @@ func _on_save() -> void:
 		return
 	Settings.offset_ms = _cal.offset_ms()
 	Settings.save_settings()
-	_detail_label.text = "Guardado. Se aplicara al grabar y al jugar."
+	_detail_label.text = Lang.t("Guardado. Se aplicará al grabar y al jugar.")
 	_save_btn.disabled = true
 
 
 func _refresh() -> void:
 	var running := _cal != null and _cal.is_running()
 	_start_btn.disabled = running
-	_start_btn.text = "REPETIR" if _measured else "EMPEZAR"
+	_start_btn.text = Lang.t("REPETIR") if _measured else Lang.t("EMPEZAR")
 	_save_btn.disabled = not _measured
 	_instructions.visible = not _measured
 

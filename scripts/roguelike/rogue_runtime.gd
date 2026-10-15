@@ -31,7 +31,7 @@ func setup(rogue_run: RogueRun, prep: RoguePrepared, manager: PlaybackManager) -
 
 
 func slot_name() -> String:
-	return RogueCatalog.SLOT[run.slot_id]["name"] if run.slot_id != "" else ""
+	return RogueCatalog.item_name(RogueCatalog.ItemKind.SLOT, run.slot_id) if run.slot_id != "" else ""
 
 
 func slot_blocked() -> bool:
@@ -53,15 +53,15 @@ func _unhandled_input(event: InputEvent) -> void:
 ## Gasta un uso de la mejora de la ranura. Devuelve "" o por que no se pudo.
 func activate() -> String:
 	if pm == null or not pm.is_active() or pm.clock.is_paused():
-		return "Ahora no"
+		return Lang.t("Ahora no")
 	if run.slot_id == "":
-		return "No tienes mejora en la ranura"
+		return Lang.t("No tienes mejora en la ranura")
 	if _is_passive(run.slot_id):
-		return "%s se activa solo" % slot_name()
+		return Lang.t("%s se activa solo") % slot_name()
 	if uses_left <= 0:
-		return "Ya usaste %s en esta canción" % slot_name()
+		return Lang.t("Ya usaste %s en esta canción") % slot_name()
 	if slot_blocked():
-		return "¡Acoplamiento! La ranura está bloqueada"
+		return Lang.t("¡Acoplamiento! La ranura está bloqueada")
 
 	var id := run.slot_id
 	var data: Dictionary = RogueCatalog.SLOT[id]
@@ -83,7 +83,7 @@ func activate() -> String:
 			pm.add_effect(TimedEffect.WINDOW_X2, t, t + span)
 		"casete":
 			var erased := pm.rewind(span)
-			notice.emit("Rebobinado: %d fallo(s) borrado(s)" % erased)
+			notice.emit(Lang.t("Rebobinado: %d fallo(s) borrado(s)") % erased)
 		"sustain":
 			pm.add_effect(TimedEffect.SUSTAIN, t, t + span)
 		"tocadiscos":
@@ -95,14 +95,14 @@ func activate() -> String:
 			_checks.append({"type": "distortion", "from": t, "to": t + span})
 		"arreglo":
 			var removed := simplify_chords(t, t + span)
-			notice.emit("Arreglo: %d nota(s) de acorde quitada(s)" % removed)
+			notice.emit(Lang.t("Arreglo: %d nota(s) de acorde quitada(s)") % removed)
 		"beat_drop":
 			var drop_ms := float(data["seconds"]) * 1000.0
 			pm.add_effect(TimedEffect.ANY_KEY_PERFECT, t, t + drop_ms)
 			_checks.append({"type": "beat_drop", "at": t + drop_ms})
 
 	uses_left -= 1
-	notice.emit("¡%s!" % slot_name())
+	notice.emit(Lang.t("¡%s!") % slot_name())
 	slot_changed.emit()
 	return ""
 
@@ -136,7 +136,7 @@ func _process(delta: float) -> void:
 		_pause_left -= delta
 		if _pause_left <= 0.0:
 			pm.clock.set_paused(false)
-			notice.emit("¡Sigue!")
+			notice.emit(Lang.t("¡Sigue!"))
 		return
 
 	var t := pm.get_time_ms()
@@ -162,10 +162,10 @@ func _resolve_distortion(from_ms: float, to_ms: float) -> void:
 	for entry in pm.miss_log:
 		var t := float(entry["t"])
 		if t >= from_ms and t < to_ms:
-			notice.emit("Distorsión: fallaste en el tramo")
+			notice.emit(Lang.t("Distorsión: fallaste en el tramo"))
 			return
 	var erased := pm.erase_all_misses()
-	notice.emit("¡Distorsión! %d fallo(s) borrado(s)" % erased)
+	notice.emit(Lang.t("¡Distorsión! %d fallo(s) borrado(s)") % erased)
 
 
 ## Beat Drop: salta 5 s y luego las notas van x1.5 durante un 10%.
@@ -175,7 +175,7 @@ func _finish_beat_drop() -> void:
 	var t := pm.get_time_ms()
 	var span := prepared.length_ms * float(data["penalty_span"])
 	pm.add_effect(TimedEffect.SCROLL, t, t + span, {"mult": float(data["scroll"])})
-	notice.emit("¡Drop! Las notas van más rápido")
+	notice.emit(Lang.t("¡Drop! Las notas van más rápido"))
 
 
 func _on_slot_stolen() -> void:
@@ -184,7 +184,7 @@ func _on_slot_stolen() -> void:
 	var lost := slot_name()
 	run.slot_id = ""
 	uses_left = 0
-	notice.emit("¡El Saqueador te ha robado %s!" % lost)
+	notice.emit(Lang.t("¡El Saqueador te ha robado %s!") % lost)
 	slot_changed.emit()
 
 

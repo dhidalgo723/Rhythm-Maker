@@ -133,16 +133,21 @@ func _build_top() -> void:
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(center)
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(560, 0)
+	panel.custom_minimum_size = Vector2(440, 0)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# La pantalla de casete a la mitad de tamano que los demas paneles: aqui
+	# solo hay unas lineas de texto y tapaba media pared de la tienda.
+	if GuiTheme.available():
+		panel.add_theme_stylebox_override("panel", GuiTheme.box(GuiTheme.PANEL,
+			GuiTheme.PANEL_MARGINS, Color.WHITE, [22, 20, 20, 28], GuiTheme.PANEL_MID, 1))
 	center.add_child(panel)
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 2)
+	box.add_theme_constant_override("separation", 0)
 	panel.add_child(box)
-	_info_kind = _label("", 13, GuiTheme.TEXT_DIM)
-	_info_name = _label("", 20, GuiTheme.TEXT_FOCUS)
-	_info_desc = _label("", 14, GuiTheme.TEXT)
-	_info_price = _label("", 14, GuiTheme.TEXT)
+	_info_kind = _label("", 11, GuiTheme.TEXT_DIM)
+	_info_name = _label("", 16, GuiTheme.TEXT_FOCUS)
+	_info_desc = _label("", 12, GuiTheme.TEXT)
+	_info_price = _label("", 12, GuiTheme.TEXT)
 	for l in [_info_kind, _info_name, _info_desc, _info_price]:
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		box.add_child(l)
@@ -170,10 +175,10 @@ func _build_bottom() -> void:
 	_bottom.alignment = BoxContainer.ALIGNMENT_CENTER
 	_bottom.add_theme_constant_override("separation", 22)
 	col.add_child(_bottom)
-	_next_btn = _plank("Siguiente jefe (canción %d)" % (_run.index + 1), _on_next)
+	_next_btn = _plank(Lang.t("Siguiente jefe (canción %d)") % (_run.index + 1), _on_next)
 	_bottom.add_child(_next_btn)
-	_bottom.add_child(_plank("Ver la partida", _on_map))
-	_abandon_btn = _plank("Abandonar partida", _on_abandon)
+	_bottom.add_child(_plank(Lang.t("Ver la partida"), _on_map))
+	_abandon_btn = _plank(Lang.t("Abandonar partida"), _on_abandon)
 	_bottom.add_child(_abandon_btn)
 	for b in _bottom.get_children():
 		(b as Button).focus_entered.connect(_show_summary)
@@ -204,7 +209,7 @@ func _place_item(i: int) -> void:
 
 
 func _refresh() -> void:
-	_money_label.text = "Monedas: %d" % _run.money
+	_money_label.text = Lang.t("Monedas: %d") % _run.money
 	for i in _boxes.size():
 		var offer: Dictionary = _run.offers[i]
 		var sold: bool = offer["sold"]
@@ -241,42 +246,41 @@ func _on_box_focus(i: int, focused: bool) -> void:
 func _show_offer(i: int) -> void:
 	var offer: Dictionary = _run.offers[i]
 	var kind: RogueCatalog.ItemKind = offer["kind"]
-	var data := RogueCatalog.item(kind, offer["id"])
-	_info_kind.text = RogueCatalog.KIND_NAMES[kind]
+	_info_kind.text = RogueCatalog.kind_name(kind)
 	_info_kind.add_theme_color_override("font_color", KIND_COLORS[kind])
-	_info_name.text = str(data["name"])
-	_info_desc.text = str(data["desc"])
+	_info_name.text = RogueCatalog.item_name(kind, offer["id"])
+	_info_desc.text = RogueCatalog.item_desc(kind, offer["id"])
 	var price := _run.price(offer)
 	if offer["sold"]:
-		_info_price.text = "Comprado"
+		_info_price.text = Lang.t("Comprado")
 	elif price > _run.money:
-		_info_price.text = "%d monedas — no te llega" % price
+		_info_price.text = Lang.t("%d monedas — no te llega") % price
 	else:
-		_info_price.text = "%d monedas — Intro para comprar" % price
+		_info_price.text = Lang.t("%d monedas — Intro para comprar") % price
 
 
 func _show_summary() -> void:
-	_info_kind.text = "Venta de garaje"
+	_info_kind.text = Lang.t("Venta de garaje")
 	_info_kind.add_theme_color_override("font_color", GuiTheme.TEXT_DIM)
-	_info_name.text = "Siguiente: %s" % _run.current_boss().title()
+	_info_name.text = Lang.t("Siguiente: %s") % _run.current_boss().title()
 	_info_desc.text = RogueCatalog.size_summary(_run.current_boss().size)
-	_info_price.text = "Elige una caja para ver qué hay"
+	_info_price.text = Lang.t("Elige una caja para ver qué hay")
 
 
 func _inventory_text() -> String:
-	var slot: String = RogueCatalog.SLOT[_run.slot_id]["name"] if _run.slot_id != "" else "vacía"
+	var slot: String = RogueCatalog.item_name(RogueCatalog.ItemKind.SLOT, _run.slot_id) if _run.slot_id != "" else Lang.t("vacía")
 	var arrows: Array[String] = []
 	for lane in Lanes.DISPLAY_ORDER:
 		var id := _run.arrow_on(lane)
 		if id != "":
-			arrows.append("%s: %s" % [Lanes.NAMES[lane], RogueCatalog.ARROW[id]["name"]])
-	var parts: Array[String] = ["Ranura: %s" % slot]
-	parts.append("Flechas: %s" % (", ".join(arrows) if not arrows.is_empty() else "ninguna"))
+			arrows.append("%s: %s" % [Lanes.lane_name(lane), RogueCatalog.item_name(RogueCatalog.ItemKind.ARROW, id)])
+	var parts: Array[String] = [Lang.t("Ranura: %s") % slot]
+	parts.append(Lang.t("Flechas: %s") % (", ".join(arrows) if not arrows.is_empty() else Lang.t("ninguna")))
 	var pending: Array[String] = []
 	for id in _run.pending:
-		pending.append(RogueCatalog.CONSUMABLE[id]["name"])
+		pending.append(RogueCatalog.item_name(RogueCatalog.ItemKind.CONSUMABLE, id))
 	if not pending.is_empty():
-		parts.append("Siguiente canción: %s" % ", ".join(pending))
+		parts.append(Lang.t("Siguiente canción: %s") % ", ".join(pending))
 	return "   |   ".join(parts)
 
 
@@ -285,10 +289,10 @@ func _inventory_text() -> String:
 func _on_box_pressed(i: int) -> void:
 	var offer: Dictionary = _run.offers[i]
 	if offer["sold"]:
-		_status.text = "Ya lo compraste"
+		_status.text = Lang.t("Ya lo compraste")
 		return
 	if _run.price(offer) > _run.money:
-		_status.text = "No tienes dinero suficiente"
+		_status.text = Lang.t("No tienes dinero suficiente")
 		return
 	if offer["kind"] == RogueCatalog.ItemKind.ARROW:
 		_open_lane_picker(i)
@@ -298,7 +302,7 @@ func _on_box_pressed(i: int) -> void:
 
 func _finish_buy(index: int, lane: int) -> void:
 	var offer: Dictionary = _run.offers[index]
-	var item_name: String = RogueCatalog.item(offer["kind"], offer["id"])["name"]
+	var item_name: String = RogueCatalog.item_name(offer["kind"], offer["id"])
 	var replaced := _run.slot_id if offer["kind"] == RogueCatalog.ItemKind.SLOT else ""
 	var err := _run.buy(index, lane)
 	if err != "":
@@ -308,13 +312,13 @@ func _finish_buy(index: int, lane: int) -> void:
 		var names: Array[String] = []
 		for id in _run.current_boss().abilities:
 			names.append(RogueCatalog.ability_name(id))
-		_status.text = "Setlist: el siguiente jefe trae %s. Las cajas se han renovado." % ", ".join(names)
+		_status.text = Lang.t("Setlist: el siguiente jefe trae %s. Las cajas se han renovado.") % ", ".join(names)
 	elif replaced != "":
-		_status.text = "%s sustituye a %s en la ranura" % [item_name, RogueCatalog.SLOT[replaced]["name"]]
+		_status.text = Lang.t("%s sustituye a %s en la ranura") % [item_name, RogueCatalog.item_name(RogueCatalog.ItemKind.SLOT, replaced)]
 	elif lane != -1:
-		_status.text = "%s puesta en %s" % [item_name, Lanes.NAMES[lane]]
+		_status.text = Lang.t("%s puesta en %s") % [item_name, Lanes.lane_name(lane)]
 	else:
-		_status.text = "Has comprado %s" % item_name
+		_status.text = Lang.t("Has comprado %s") % item_name
 	_refresh()
 
 
@@ -337,8 +341,8 @@ func _open_lane_picker(offer_index: int) -> void:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 10)
 	_lane_picker.add_child(box)
-	var arrow_name: String = RogueCatalog.ARROW[_run.offers[offer_index]["id"]]["name"]
-	var title := _label("¿En qué flecha pones la %s?" % arrow_name, 18, GuiTheme.TEXT_FOCUS)
+	var arrow_name: String = RogueCatalog.item_name(RogueCatalog.ItemKind.ARROW, _run.offers[offer_index]["id"])
+	var title := _label(Lang.t("¿En qué flecha pones la %s?") % arrow_name, 18, GuiTheme.TEXT_FOCUS)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title)
 
@@ -355,12 +359,12 @@ func _open_lane_picker(offer_index: int) -> void:
 		b.icon = KeyIcons.texture(lane, KeyIcons.Variant.NORMAL, true)
 		b.expand_icon = true
 		b.custom_minimum_size = Vector2(84, 84)
-		b.tooltip_text = Lanes.NAMES[lane]
+		b.tooltip_text = Lanes.lane_name(lane)
 		b.pressed.connect(_on_lane_chosen.bind(lane))
 		col.add_child(b)
 		var current := _run.arrow_on(lane)
-		var extra := "\n(%s)" % RogueCatalog.ARROW[current]["name"] if current != "" else ""
-		var info := _label(Lanes.NAMES[lane] + extra, 12, GuiTheme.TEXT_DIM)
+		var extra := "\n(%s)" % RogueCatalog.item_name(RogueCatalog.ItemKind.ARROW, current) if current != "" else ""
+		var info := _label(Lanes.lane_name(lane) + extra, 12, GuiTheme.TEXT_DIM)
 		info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		info.custom_minimum_size = Vector2(84, 0)
 		col.add_child(info)
@@ -368,7 +372,7 @@ func _open_lane_picker(offer_index: int) -> void:
 			first = b
 
 	var cancel := Button.new()
-	cancel.text = "Cancelar"
+	cancel.text = Lang.t("Cancelar")
 	cancel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	cancel.custom_minimum_size = Vector2(180, 40)
 	cancel.pressed.connect(_close_lane_picker)
@@ -408,7 +412,7 @@ func _on_next() -> void:
 	var prepared := _run.prepare_song()
 	if prepared == null:
 		_run.state = RogueRun.State.SHOP
-		_status.text = "No se pudo preparar la siguiente canción"
+		_status.text = Lang.t("No se pudo preparar la siguiente canción")
 		return
 	Session.rogue_prepared = prepared
 	Session.selected_song = null
@@ -424,8 +428,8 @@ func _on_map() -> void:
 func _on_abandon() -> void:
 	if not _abandon_armed:
 		_abandon_armed = true
-		_abandon_btn.text = "¿Seguro? Pulsa otra vez"
-		_status.text = "Abandonar borra la partida entera"
+		_abandon_btn.text = Lang.t("¿Seguro? Pulsa otra vez")
+		_status.text = Lang.t("Abandonar borra la partida entera")
 		return
 	Session.rogue_run = null
 	get_tree().change_scene_to_file(ROGUE_SCENE)

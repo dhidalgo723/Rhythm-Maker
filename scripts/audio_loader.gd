@@ -7,7 +7,7 @@ extends RefCounted
 
 const SUPPORTED := ["wav", "mp3", "ogg"]
 static var FILE_FILTERS := PackedStringArray([
-	"*.wav ; WAV (recomendado: timing exacto)",
+	Lang.t("*.wav ; WAV (recomendado: timing exacto)"),
 	"*.mp3 ; MP3",
 	"*.ogg ; OGG Vorbis",
 ])

@@ -68,18 +68,18 @@ static func _apply_consumables(run: RogueRun, p: RoguePrepared) -> void:
 				for i in 2:
 					var lane: int = dirs.pop_at(r.randi_range(0, dirs.size() - 1))
 					p.rules.disabled_lanes.append(lane)
-				p.notices.append("Cascos Rotos: %s y %s desactivadas" % [
-					Lanes.NAMES[p.rules.disabled_lanes[-2]], Lanes.NAMES[p.rules.disabled_lanes[-1]]])
+				p.notices.append(Lang.t("Cascos Rotos: %s y %s desactivadas") % [
+					Lanes.lane_name(p.rules.disabled_lanes[-2]), Lanes.lane_name(p.rules.disabled_lanes[-1])])
 			"ensayo":
 				p.rules.risk_free_until_ms = REHEARSAL_MS
-				p.notices.append("Ensayo: los primeros 15 s no cuentan")
+				p.notices.append(Lang.t("Ensayo: los primeros 15 s no cuentan"))
 			"grabadora":
 				p.slot_uses = 2
 			"soborno":
 				var active := p.boss.active_abilities()
 				if not active.is_empty():
 					p.boss.bribed = active[r.randi_range(0, active.size() - 1)]
-					p.notices.append("Soborno: %s desactivada" % RogueCatalog.ability_name(p.boss.bribed))
+					p.notices.append(Lang.t("Soborno: %s desactivada") % RogueCatalog.ability_name(p.boss.bribed))
 			"contrato":
 				p.money_mult *= float(data["money_mult"])
 				p.rules.miss_limit += int(data["misses"])
@@ -179,7 +179,7 @@ static func _apply_boss(run: RogueRun, p: RoguePrepared) -> void:
 			"cuerda_rota":
 				var lane := ChartTransforms.break_string(p.chart, r)
 				rules.disabled_lanes.append(lane)
-				p.notices.append("Cuerda Rota: %s no funciona" % Lanes.NAMES[lane])
+				p.notices.append(Lang.t("Cuerda Rota: %s no funciona") % Lanes.lane_name(lane))
 			"escudo_jefe":
 				rules.boss_shield_perfects = int(data["perfects"])
 				rules.boss_shield_regen_ms = float(data["regen_s"]) * 1000.0
@@ -191,7 +191,7 @@ static func _apply_boss(run: RogueRun, p: RoguePrepared) -> void:
 				var seg := ChartTransforms.random_segment(r, length, RogueCatalog.BOSS_SEGMENT)
 				var lane := ChartTransforms.minefield(p.chart, seg.x, seg.y)
 				if lane != -1:
-					p.notices.append("Carril Minado: %s" % Lanes.NAMES[lane])
+					p.notices.append(Lang.t("Carril Minado: %s") % Lanes.lane_name(lane))
 			"fantasma":
 				rules.ghost = true
 			"cambio_clave":
@@ -199,7 +199,7 @@ static func _apply_boss(run: RogueRun, p: RoguePrepared) -> void:
 			"polirritmia":
 				var lane := ChartTransforms.polyrhythm(p.chart, r)
 				if lane != -1:
-					p.notices.append("Polirritmia: %s va en tresillos" % Lanes.NAMES[lane])
+					p.notices.append(Lang.t("Polirritmia: %s va en tresillos") % Lanes.lane_name(lane))
 			"pegajosas":
 				var seg := ChartTransforms.random_segment(r, length, STICKY_SEGMENT)
 				ChartTransforms.sticky_notes(p.chart, seg.x, seg.y)
@@ -212,4 +212,4 @@ static func _apply_boss(run: RogueRun, p: RoguePrepared) -> void:
 					var lane := options[r.randi_range(0, options.size() - 1)]
 					rules.cursed_lanes.append(lane)
 					rules.lane_score_mult[lane] *= float(RogueCatalog.ARROW["maldita"]["mult"])
-					p.notices.append("Maldición: %s es Maldita" % Lanes.NAMES[lane])
+					p.notices.append(Lang.t("Maldición: %s es Maldita") % Lanes.lane_name(lane))

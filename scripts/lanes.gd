@@ -18,15 +18,15 @@ const SPACE := 4
 ## recorrer esto y no 0..COUNT, o el espacio acabaria a la derecha del todo.
 const DISPLAY_ORDER: Array[int] = [0, 1, SPACE, 2, 3]
 
-## OS.get_keycode_string() devuelve los nombres en ingles; el resto de la UI
-## esta en espanol. Solo se traducen las teclas con nombre propio: las letras
-## y los numeros ya se llaman igual.
+## OS.get_keycode_string() devuelve los nombres en ingles. Con el juego en
+## espanol se traducen las teclas con nombre propio: las letras y los numeros
+## ya se llaman igual.
 const KEY_NAMES_ES := {
 	"Left": "Izq", "Right": "Der", "Up": "Arriba", "Down": "Abajo",
-	"Space": "Espacio", "Enter": "Intro", "Shift": "Mayus", "Ctrl": "Ctrl",
+	"Space": "Espacio", "Enter": "Intro", "Shift": "Mayús", "Ctrl": "Ctrl",
 	"Alt": "Alt", "Tab": "Tab", "Backspace": "Retroceso", "Delete": "Supr",
 	"Insert": "Insert", "Home": "Inicio", "End": "Fin",
-	"PageUp": "RePag", "PageDown": "AvPag",
+	"PageUp": "RePág", "PageDown": "AvPág",
 }
 const COLORS: Array[Color] = [
 	Color("c24b99"),  # izq   - magenta
@@ -35,6 +35,11 @@ const COLORS: Array[Color] = [
 	Color("f9393f"),  # der   - rojo
 	Color("ffd23f"),  # espacio - amarillo
 ]
+
+
+## Nombre del carril en el idioma actual.
+static func lane_name(lane: int) -> String:
+	return Lang.t(NAMES[lane])
 
 
 ## Posicion en pantalla (0 = la mas a la izquierda) de un carril.
@@ -91,14 +96,16 @@ static func key_name(physical_keycode: int) -> String:
 		label = OS.get_keycode_string(physical_keycode)
 	if label == "":
 		return "?"
-	return KEY_NAMES_ES.get(label, label)
+	if TranslationServer.get_locale().begins_with("es"):
+		return KEY_NAMES_ES.get(label, label)
+	return label
 
 
 ## Resumen tipo "Izq Abajo Arriba Der  o  A S W D" para las ayudas en pantalla.
 static func keys_hint() -> String:
 	var hint := _slot_hint(Settings.SLOT_PRIMARY)
 	if not Settings.slot_is_empty(Settings.SLOT_SECONDARY):
-		hint += "  o  " + _slot_hint(Settings.SLOT_SECONDARY)
+		hint += "  %s  " % Lang.t("o") + _slot_hint(Settings.SLOT_SECONDARY)
 	return hint
 
 

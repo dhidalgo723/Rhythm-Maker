@@ -30,7 +30,7 @@ func _ready() -> void:
 	margin.add_child(root)
 
 	var title := Label.new()
-	title.text = "ELIGE UNA GRABACION"
+	title.text = Lang.t("ELIGE UNA GRABACIÓN")
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 32)
 	title.add_theme_color_override("font_color", GuiTheme.TEXT_FOCUS)
@@ -39,7 +39,7 @@ func _ready() -> void:
 	_empty = Label.new()
 	_empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_empty.modulate = Color(1, 1, 1, 0.6)
-	_empty.text = "No hay grabaciones todavia.\nVe a MODO EDICION para crear una."
+	_empty.text = Lang.t("No hay grabaciones todavía.\nVe a MODO EDICIÓN para crear una.")
 	root.add_child(_empty)
 
 	# La lista va dentro de una placa oscura con tornillos.
@@ -78,7 +78,7 @@ func _ready() -> void:
 	speed_row.add_child(speed)
 
 	_back = Button.new()
-	_back.text = "Volver al menu"
+	_back.text = Lang.t("Volver al menú")
 	_back.custom_minimum_size = Vector2(220, 40)
 	_back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_back.pressed.connect(func() -> void: get_tree().change_scene_to_file(MENU_SCENE))
@@ -90,7 +90,7 @@ func _ready() -> void:
 ## "Velocidad 500 ms" se leia al reves (numero bajo = las notas salen tarde),
 ## asi que se dice directamente cuanto antes aparecen.
 static func _lead_text() -> String:
-	return "Las notas aparecen %.1f s antes (mas = las ves antes)" % (Settings.travel_time_ms / 1000.0)
+	return Lang.t("Las notas aparecen %.1f s antes (más = las ves antes)") % (Settings.travel_time_ms / 1000.0)
 
 
 func _refresh() -> void:
@@ -112,7 +112,7 @@ func _refresh() -> void:
 		play.custom_minimum_size = Vector2(0, 54)
 		play.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		var secs := entry.last_note_ms() / 1000
-		play.text = "  %s          %d notas   -   %d:%02d" % [
+		play.text = Lang.t("  %s          %d notas   -   %d:%02d") % [
 			entry.title(), entry.note_count(), secs / 60, secs % 60]
 		play.pressed.connect(_on_play.bind(entry))
 		row.add_child(play)
@@ -122,7 +122,7 @@ func _refresh() -> void:
 		var del := Button.new()
 		del.text = "X"
 		del.custom_minimum_size = Vector2(54, 54)
-		del.tooltip_text = "Borrar esta grabacion"
+		del.tooltip_text = Lang.t("Borrar esta grabación")
 		del.pressed.connect(_on_delete.bind(entry))
 		row.add_child(del)
 

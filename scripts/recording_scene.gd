@@ -48,7 +48,7 @@ func _ready() -> void:
 
 	# La grabacion arranca tras la cuenta atras: si empieza de golpe no da
 	# tiempo a colocar las manos y las primeras notas salen siempre tarde.
-	_status_label.text = "Preparate..."
+	_status_label.text = Lang.t("Prepárate...")
 
 
 func _build_ui() -> void:
@@ -137,7 +137,7 @@ func _build_ui() -> void:
 
 	_count_label = Label.new()
 	_count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_count_label.text = "0 notas"
+	_count_label.text = Lang.t("0 notas")
 	root.add_child(_count_label)
 
 	_countdown = Label.new()
@@ -148,7 +148,7 @@ func _build_ui() -> void:
 	root.add_child(_countdown)
 
 	_action_btn = Button.new()
-	_action_btn.text = "Cancelar  (Esc)"
+	_action_btn.text = Lang.t("Cancelar  (Esc)")
 	_action_btn.theme_type_variation = "BigButton"
 	_action_btn.custom_minimum_size = Vector2(300, 52)
 	_action_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -190,8 +190,8 @@ func _process(delta: float) -> void:
 			_countdown.text = ""
 			_started = true
 			_rec.start(Session.audio_stream, Session.audio_path)
-			_status_label.text = "GRABANDO - toca las flechas al ritmo"
-			_action_btn.text = "Detener y guardar  (Esc)"
+			_status_label.text = Lang.t("GRABANDO - toca las flechas al ritmo")
+			_action_btn.text = Lang.t("Detener y guardar  (Esc)")
 		else:
 			_countdown.text = str(ceili(_countdown_left))
 		return
@@ -205,7 +205,7 @@ func _process(delta: float) -> void:
 	# Diagnostico de Fase 1: si "deriva" se queda en pocos ms y estable,
 	# la compensacion esta funcionando.
 	var raw := _rec.clock.get_raw_audio_time_ms()
-	_diag_label.text = "reloj %.1f ms | audio crudo %.1f ms | deriva %+.1f ms | latencia salida %.1f ms" % [
+	_diag_label.text = Lang.t("reloj %.1f ms | audio crudo %.1f ms | deriva %+.1f ms | latencia salida %.1f ms") % [
 		t, raw, t - raw, AudioServer.get_output_latency() * 1000.0
 	]
 
@@ -224,7 +224,7 @@ func _on_lane_released(lane: int) -> void:
 
 
 func _on_note_recorded(_note: ChartNote) -> void:
-	_count_label.text = "%d notas" % _rec.chart.notes.size()
+	_count_label.text = Lang.t("%d notas") % _rec.chart.notes.size()
 
 
 func _on_recording_finished(chart: Chart) -> void:
@@ -237,19 +237,19 @@ func _on_recording_finished(chart: Chart) -> void:
 	var title := Session.recording_title if Session.recording_title != "" else Session.song_title()
 	var song_dir := Library.save_recording(chart, Session.audio_path, title)
 	if song_dir == "":
-		_status_label.text = "ERROR al guardar la grabacion (mira la consola)"
-		_action_btn.text = "Volver"
+		_status_label.text = Lang.t("ERROR al guardar la grabación (mira la consola)")
+		_action_btn.text = Lang.t("Volver")
 		_action_btn.focus_mode = Control.FOCUS_ALL
 		_action_btn.grab_focus()
 		return
 
 	Session.selected_song = null
 	_status_label.add_theme_color_override("font_color", Color("12fa05"))
-	_status_label.text = "Guardado \"%s\" con %d notas" % [title, chart.notes.size()]
-	_action_btn.text = "Volver"
+	_status_label.text = Lang.t("Guardado \"%s\" con %d notas") % [title, chart.notes.size()]
+	_action_btn.text = Lang.t("Volver")
 
 	var play := Button.new()
-	play.text = "JUGARLA AHORA"
+	play.text = Lang.t("JUGARLA AHORA")
 	play.theme_type_variation = "BigButton"
 	play.custom_minimum_size = Vector2(300, 52)
 	play.size_flags_horizontal = Control.SIZE_SHRINK_CENTER

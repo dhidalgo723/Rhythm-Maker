@@ -13,6 +13,9 @@ const SIZE_NAMES := {
 	Size.FINAL: "Jefe",
 }
 
+## Jefes cuyas habilidades se ven desde el principio de la partida.
+const VISIBLE_SIZES: Array[Size] = [Size.SMALL, Size.MEDIUM]
+
 ## Clave de tamano en pool.json.
 const SIZE_KEYS := {
 	Size.SMALL: "small",
@@ -44,9 +47,57 @@ static func duration_text(ms: int) -> String:
 ## "30 s, 40 notas, 15 fallos, velocidad lenta": resumen de un tamano.
 static func size_summary(size: Size) -> String:
 	var spec: Dictionary = SIZE_SPECS[size]
-	return "%s, %d notas, %d fallos, velocidad %s" % [
+	return Lang.t("%s, %d notas, %d fallos, velocidad %s") % [
 		duration_text(int(spec["duration_ms"])), int(spec["notes"]), int(spec["misses"]),
-		SPEED_NAMES[spec["speed"]]]
+		speed_name(spec["speed"])]
+
+
+# Nombres y descripciones en el idioma actual. Las tablas de abajo guardan el
+# texto en espanol; se traduce aqui, al mostrarlo.
+
+static func size_name(size: Size) -> String:
+	return Lang.t(SIZE_NAMES[size])
+
+
+static func speed_name(speed: String) -> String:
+	return Lang.t(SPEED_NAMES[speed])
+
+
+static func kind_name(kind: ItemKind) -> String:
+	return Lang.t(KIND_NAMES[kind])
+
+
+static func item_name(kind: ItemKind, id: String) -> String:
+	return Lang.t(str(item(kind, id).get("name", id)))
+
+
+static func item_desc(kind: ItemKind, id: String) -> String:
+	return Lang.t(str(item(kind, id).get("desc", "")))
+
+
+static func ability_desc(id: String) -> String:
+	return Lang.t(ABILITY[id]["desc"]) if ABILITY.has(id) else ""
+
+
+static func combo_name(id: String) -> String:
+	return Lang.t(FINAL_COMBOS[id]["name"])
+
+
+## Reglas del modo, una por linea (portada del roguelike y Ajustes > Informacion).
+static func rules_lines() -> Array[String]:
+	return [
+		Lang.t("10 canciones seguidas: Pequeña, Mediana y Grande tres veces, y el Jefe."),
+		"",
+		Lang.t("• Pequeño: %s.") % size_summary(Size.SMALL),
+		Lang.t("• Mediano: %s.") % size_summary(Size.MEDIUM),
+		Lang.t("• Grande: %s.") % size_summary(Size.BIG),
+		Lang.t("• Jefe: %s.") % size_summary(Size.FINAL),
+		Lang.t("• Cada canción tiene una puntuación que alcanzar y un límite de fallos, que baja a cada vuelta."),
+		Lang.t("• Si fallas de más o no llegas a la puntuación, la partida vuelve a empezar desde cero."),
+		Lang.t("• Al pasar una canción ganas dinero según los fallos que te sobraron, y entras a la venta de garaje."),
+		Lang.t("• Tienes 1 ranura de mejora: se activa con Intro o Shift izquierdo, una vez por canción."),
+		Lang.t("• Las habilidades de los jefes pequeños y medianos se ven desde el principio; las de los grandes y el Jefe, al empezar la canción."),
+	]
 
 
 static func travel_ms(size: Size) -> int:
@@ -257,7 +308,7 @@ static func abilities_of_size(size: Size) -> Array[String]:
 
 
 static func ability_name(id: String) -> String:
-	return ABILITY[id]["name"] if ABILITY.has(id) else id
+	return Lang.t(ABILITY[id]["name"]) if ABILITY.has(id) else id
 
 
 ## Fallos permitidos en la cancion `index` (0..9), antes de consumibles.

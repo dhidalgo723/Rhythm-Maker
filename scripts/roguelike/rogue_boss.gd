@@ -2,8 +2,8 @@ class_name RogueBoss
 extends RefCounted
 
 ## Una de las 10 canciones de la partida: su tamano, la cancion que toca y las
-## habilidades del jefe. Las habilidades estan ocultas hasta que empieza la
-## cancion (o hasta que un Setlist las revela).
+## habilidades del jefe. Las de los jefes pequenos y medianos se ven siempre;
+## las de los grandes y el final, al empezar la cancion (o con un Setlist).
 
 var index := 0
 var size: RogueCatalog.Size = RogueCatalog.Size.SMALL
@@ -17,13 +17,13 @@ var bribed := ""
 
 
 func size_name() -> String:
-	return RogueCatalog.SIZE_NAMES[size]
+	return RogueCatalog.size_name(size)
 
 
 func title() -> String:
 	if combo_id != "":
-		return "Jefe Final: %s" % RogueCatalog.FINAL_COMBOS[combo_id]["name"]
-	return "Jefe %s" % size_name()
+		return Lang.t("Jefe Final: %s") % RogueCatalog.combo_name(combo_id)
+	return Lang.t("Jefe %s") % size_name()
 
 
 func active_abilities() -> Array[String]:

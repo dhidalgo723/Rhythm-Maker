@@ -143,7 +143,7 @@ func _build_ui() -> void:
 	spacer2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(spacer2)
 
-	_hud_misses = _mk_label("Fallos 0/%d" % Judgement.MAX_MISSES, 22)
+	_hud_misses = _mk_label(Lang.t("Fallos 0/%d") % Judgement.MAX_MISSES, 22)
 	row.add_child(_hud_misses)
 
 	_progress = ProgressBar.new()
@@ -179,7 +179,7 @@ func _build_ui() -> void:
 	_countdown.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	add_child(_countdown)
 
-	var hint := _mk_label("%s   -   Esc para pausar" % Lanes.keys_hint(), 14)
+	var hint := _mk_label(Lang.t("%s   -   Esc para pausar") % Lanes.keys_hint(), 14)
 	hint.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	hint.offset_top = -30
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -221,12 +221,12 @@ func _build_results() -> void:
 	# En el roguelike no se reintenta: un solo boton que lleva a la tienda o al
 	# menu del roguelike segun como haya ido.
 	if _prepared != null:
-		_retry_btn = _plank("Continuar", _continue_rogue)
+		_retry_btn = _plank(Lang.t("Continuar"), _continue_rogue)
 		buttons.add_child(_retry_btn)
 	else:
-		_retry_btn = _plank("Reintentar", _retry)
+		_retry_btn = _plank(Lang.t("Reintentar"), _retry)
 		buttons.add_child(_retry_btn)
-		buttons.add_child(_plank("Otra cancion", _leave))
+		buttons.add_child(_plank(Lang.t("Otra canción"), _leave))
 
 
 func _build_pause_panel() -> void:
@@ -238,21 +238,21 @@ func _build_pause_panel() -> void:
 	box.add_theme_constant_override("separation", 10)
 	_pause_panel.add_child(box)
 
-	var title := _mk_label("PAUSA", 36)
+	var title := _mk_label(Lang.t("PAUSA"), 36)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_color_override("font_color", GuiTheme.TEXT_FOCUS)
 	box.add_child(title)
 
-	_resume_btn = _plank("Reanudar", func() -> void: _set_paused(false))
+	_resume_btn = _plank(Lang.t("Reanudar"), func() -> void: _set_paused(false))
 	box.add_child(_resume_btn)
 	if _prepared != null:
 		# Repetir un jefe hasta pasarlo romperia el roguelike.
-		box.add_child(_plank("Rendirse", _give_up))
+		box.add_child(_plank(Lang.t("Rendirse"), _give_up))
 	else:
-		box.add_child(_plank("Reintentar", _retry))
-		box.add_child(_plank("Salir a la lista", _leave))
+		box.add_child(_plank(Lang.t("Reintentar"), _retry))
+		box.add_child(_plank(Lang.t("Salir a la lista"), _leave))
 
-	var hint := _mk_label("Esc para reanudar", 13)
+	var hint := _mk_label(Lang.t("Esc para reanudar"), 13)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.add_theme_color_override("font_color", GuiTheme.TEXT_DIM)
 	box.add_child(hint)
@@ -331,10 +331,11 @@ func _on_note_missed(_lane: int) -> void:
 
 
 func _show_judgement(kind: Judgement.Kind, delta: float) -> void:
-	_judge_label.text = Judgement.NAMES[kind]
+	_judge_label.text = Judgement.label(kind)
 	_judge_label.add_theme_color_override("font_color", Judgement.COLORS[kind])
 	_judge_label.modulate.a = 1.0
-	_timing_label.text = Judgement.timing_hint(kind, delta)
+	var hint := Judgement.timing_hint(kind, delta)
+	_timing_label.text = Lang.t(hint) if hint != "" else ""
 	_timing_label.add_theme_color_override("font_color", Judgement.COLORS[kind])
 	_timing_label.modulate.a = 1.0
 	_judge_timer = 0.45
@@ -344,7 +345,7 @@ func _on_score_changed(score: int, combo: int, misses: int) -> void:
 	_hud_score.text = str(score)
 	_hud_combo.text = "%d" % combo if combo >= 3 else ""
 	var limit := _pm.rules.miss_limit
-	_hud_misses.text = "Fallos %d/%d" % [misses, limit]
+	_hud_misses.text = Lang.t("Fallos %d/%d") % [misses, limit]
 	var danger := float(misses) / float(maxi(1, limit))
 	_hud_misses.add_theme_color_override("font_color",
 		Color("ffffff").lerp(Color("f9393f"), clampf(danger, 0.0, 1.0)))
@@ -354,14 +355,14 @@ func _on_song_ended() -> void:
 	if _prepared != null:
 		_show_rogue_results(false)
 	else:
-		_show_results("CANCION COMPLETADA", Color("2ee6a8"))
+		_show_results(Lang.t("CANCIÓN COMPLETADA"), Color("2ee6a8"))
 
 
 func _on_game_over() -> void:
 	if _prepared != null:
 		_show_rogue_results(true)
 	else:
-		_show_results("PERDISTE", Color("f9393f"))
+		_show_results(Lang.t("PERDISTE"), Color("f9393f"))
 
 
 func _show_message(text: String) -> void:
@@ -383,31 +384,31 @@ func _show_rogue_results(lost: bool) -> void:
 	_hud_combo.text = ""
 
 	var lines: Array[String] = [
-		"Puntuacion: %d / %d" % [_pm.score, _prepared.target_score],
-		"Fallos: %d / %d" % [_pm.misses, _pm.rules.miss_limit],
-		"Precision: %.1f%%" % _pm.accuracy(),
+		Lang.t("Puntuación: %d / %d") % [_pm.score, _prepared.target_score],
+		Lang.t("Fallos: %d / %d") % [_pm.misses, _pm.rules.miss_limit],
+		Lang.t("Precisión: %.1f%%") % _pm.accuracy(),
 		"",
 	]
 	if out["passed"]:
-		lines.append("[color=#%s]+%d monedas[/color]  (tienes %d)" % [
+		lines.append(Lang.t("[color=#%s]+%d monedas[/color]  (tienes %d)") % [
 			GuiTheme.TEXT_FOCUS.to_html(false), out["money"], run.money])
 	else:
 		lines.append("[color=#f9393f]%s[/color]" % out["reason"])
-		lines.append("La partida vuelve a empezar desde cero.")
+		lines.append(Lang.t("La partida vuelve a empezar desde cero."))
 
 	match run.state:
 		RogueRun.State.WON:
-			_results_title.text = "¡HAS GANADO!"
+			_results_title.text = Lang.t("¡HAS GANADO!")
 			_results_title.add_theme_color_override("font_color", GuiTheme.TEXT_FOCUS)
-			_retry_btn.text = "Volver al roguelike"
+			_retry_btn.text = Lang.t("Volver al roguelike")
 		RogueRun.State.SHOP:
-			_results_title.text = "¡JEFE SUPERADO!"
+			_results_title.text = Lang.t("¡JEFE SUPERADO!")
 			_results_title.add_theme_color_override("font_color", Color("2ee6a8"))
-			_retry_btn.text = "Ir a la venta de garaje"
+			_retry_btn.text = Lang.t("Ir a la venta de garaje")
 		_:
-			_results_title.text = "FIN DE LA PARTIDA"
+			_results_title.text = Lang.t("FIN DE LA PARTIDA")
 			_results_title.add_theme_color_override("font_color", Color("f9393f"))
-			_retry_btn.text = "Volver al roguelike"
+			_retry_btn.text = Lang.t("Volver al roguelike")
 	_results_text.text = "[center]%s[/center]" % "\n".join(lines)
 	_results.visible = true
 	_retry_btn.grab_focus()
@@ -438,16 +439,16 @@ func _show_results(title: String, color: Color) -> void:
 	_results_title.text = title
 	_results_title.add_theme_color_override("font_color", color)
 	var lines: Array[String] = [
-		"Puntuacion: %d" % _pm.score,
-		"Combo maximo: %d" % _pm.max_combo,
+		Lang.t("Puntuación: %d") % _pm.score,
+		Lang.t("Combo máximo: %d") % _pm.max_combo,
 		"",
 	]
 	for kind in Judgement.ORDER:
 		lines.append("[color=#%s]%s[/color]  %d" % [
-			Judgement.COLORS[kind].to_html(false), Judgement.NAMES[kind], _pm.count(kind)])
+			Judgement.COLORS[kind].to_html(false), Judgement.label(kind), _pm.count(kind)])
 	lines.append("")
-	lines.append("Precision: %.1f%%" % _pm.accuracy())
-	lines.append("Notas del chart: %d" % _pm.total_notes())
+	lines.append(Lang.t("Precisión: %.1f%%") % _pm.accuracy())
+	lines.append(Lang.t("Notas del chart: %d") % _pm.total_notes())
 	_results_text.text = "[center]%s[/center]" % "\n".join(lines)
 	_results.visible = true
 	# Partida acabada: ya no hay carriles que proteger, se navega con teclado.

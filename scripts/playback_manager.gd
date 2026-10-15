@@ -351,7 +351,7 @@ func judge_press(lane: int, time_ms: float) -> int:
 	if pn.note.decoy:
 		pn.state = PlayNote.State.SKIPPED
 		_advance_head(lane)
-		message.emit("¡Señuelo!")
+		message.emit(Lang.t("¡Señuelo!"))
 		_register_miss(lane, null, time_ms)
 		return Judgement.Kind.MISS
 
@@ -379,11 +379,11 @@ func judge_release(lane: int, time_ms: float) -> void:
 	if time_ms >= pn.note.end_ms() - HOLD_RELEASE_TOLERANCE_MS:
 		_complete_hold(pn)
 	elif is_effect_active(TimedEffect.SUSTAIN, time_ms) or lane in rules.unbreakable_hold_lanes:
-		message.emit("Sustain")
+		message.emit(Lang.t("Sustain"))
 		_complete_hold(pn)
 	else:
 		pn.state = PlayNote.State.MISSED
-		message.emit("¡Rota!")
+		message.emit(Lang.t("¡Rota!"))
 		hold_broken.emit(lane)
 		_register_miss(lane, pn, time_ms)
 	_advance_head(lane)
@@ -552,7 +552,7 @@ func _hit(pn: PlayNote, kind: int, delta: float, t_ms: float) -> void:
 		if _boss_shield_streak >= rules.boss_shield_perfects:
 			_boss_shield_up = false
 			_boss_shield_down_at = t_ms
-			message.emit("¡Escudo del jefe roto!")
+			message.emit(Lang.t("¡Escudo del jefe roto!"))
 	score += points
 	pn.score_delta = points
 
@@ -589,7 +589,7 @@ func _register_miss(lane: int, pn: PlayNote, t_ms: float) -> void:
 	# Flecha Escudo: el primer fallo de la cancion en ese carril no cuenta.
 	if lane in rules.shield_lanes and _shield_used[lane] == 0:
 		_shield_used[lane] = 1
-		message.emit("¡Escudo!")
+		message.emit(Lang.t("¡Escudo!"))
 		return
 
 	var weight := rules.lane_miss_weight[lane]
@@ -618,7 +618,7 @@ func _register_miss(lane: int, pn: PlayNote, t_ms: float) -> void:
 		if rules.bis and not _bis_used:
 			_bis_used = true
 			misses = rules.miss_limit
-			message.emit("¡Bis!")
+			message.emit(Lang.t("¡Bis!"))
 			bis_triggered.emit()
 			score_changed.emit(score, combo, misses)
 		else:
@@ -641,7 +641,7 @@ func _note_done() -> void:
 	_notes_done += 1
 	if rules.key_rotation_every > 0 and _notes_done % rules.key_rotation_every == 0:
 		key_shift = (key_shift + 1) % Settings.DIRECTION_LANES.size()
-		message.emit("¡Cambio de clave!")
+		message.emit(Lang.t("¡Cambio de clave!"))
 		keys_rotated.emit(key_shift)
 
 
@@ -651,7 +651,7 @@ func _update_boss_shield(t_ms: float) -> void:
 	if t_ms - _boss_shield_down_at >= rules.boss_shield_regen_ms:
 		_boss_shield_up = true
 		_boss_shield_streak = 0
-		message.emit("El escudo del jefe se regenera")
+		message.emit(Lang.t("El escudo del jefe se regenera"))
 
 
 ## Tempo y silencio son efectos del audio: se aplican al reloj aqui, en un

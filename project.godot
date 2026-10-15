@@ -10,10 +10,16 @@ config_version=5
 
 [application]
 
-config/name="Juego Ritmico"
+config/name="Beat Drop"
 run/main_scene="res://scenes/main_menu.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.svg"
+
+[internationalization]
+
+; Los textos del codigo estan en espanol: sin esto, Godot los traduciria al
+; ingles aunque el idioma elegido sea el espanol (ver Lang).
+locale/fallback="es"
 
 [autoload]
 

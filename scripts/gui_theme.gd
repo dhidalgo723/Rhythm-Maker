@@ -15,6 +15,13 @@ extends RefCounted
 ## por defecto de Godot.
 
 const ATLAS_PATH := "res://GUI/gui retro.png"
+## Tipografia de toda la interfaz: la copia con tildes y ñ que genera
+## tools/font_add_accents.py, o la original si no se ha generado. Lo que siga
+## faltando (flechas...) sale de la fuente por defecto de Godot (ver _font()).
+const FONT_PATHS: Array[String] = [
+	"res://Fonts/After Burner Neue Acentos.ttf",
+	"res://Fonts/After Burner Neue.ttf",
+]
 const SCALE := 2
 ## Las teclas de pildora miden 13 px de alto: a x4 tienen la altura de un boton
 ## de menu y las esquinas siguen siendo redondas en vez de estirarse.
@@ -164,6 +171,9 @@ static func _sliced(region: Rect2i, margins: Array, mid: Vector2i, scale: int) -
 static func build() -> Theme:
 	var t := Theme.new()
 	t.default_font_size = 18
+	var font := _font()
+	if font != null:
+		t.default_font = font
 
 	for type in ["Label", "Button", "LineEdit"]:
 		t.set_color("font_outline_color", type, OUTLINE)
@@ -300,6 +310,28 @@ static func _flat(color: Color, radius: int) -> StyleBoxFlat:
 	sb.bg_color = color
 	sb.set_corner_radius_all(radius)
 	return sb
+
+
+## La fuente del juego, con la de Godot como respaldo para los caracteres que
+## le faltan. null si no esta el archivo: se queda la fuente por defecto.
+static func _font() -> Font:
+	var main: Font = null
+	for path in FONT_PATHS:
+		if ResourceLoader.exists(path):
+			main = load(path)
+			break
+	if main == null:
+		return null
+	# Variacion en vez de tocar el recurso importado: el respaldo se apunta
+	# aqui y el .ttf queda como esta.
+	var font := FontVariation.new()
+	font.base_font = main
+	font.fallbacks = [ThemeDB.fallback_font]
+	# Las letras quedan altas en la linea (la fuente reserva mucho hueco bajo
+	# la base para descendentes que no tiene): se bajan 0.15 em para que el
+	# texto salga centrado en los botones.
+	font.variation_transform = Transform2D(Vector2(1, 0), Vector2(0, 1), Vector2(0, 0.15))
+	return font
 
 
 static func _atlas_image() -> Image:

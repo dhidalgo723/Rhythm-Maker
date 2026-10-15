@@ -48,6 +48,11 @@ const NAMES := {
 	Kind.MISS: "Errada",
 }
 
+## Nombre del juicio en el idioma actual.
+static func label(kind: Kind) -> String:
+	return Lang.t(NAMES[kind])
+
+
 const COLORS := {
 	Kind.PERFECT: Color("4de8ff"),
 	Kind.GOOD: Color("2ee6a8"),

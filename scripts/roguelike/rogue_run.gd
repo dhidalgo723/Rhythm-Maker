@@ -80,6 +80,9 @@ func _generate_bosses() -> void:
 		else:
 			boss.abilities.append(_pick_ability(boss.size, used_abilities))
 		boss.song_id = _pick_song(boss.size, used_songs)
+		# Los jefes pequenos y medianos se ven desde el principio; los grandes y
+		# el final solo al empezar su cancion (o con un Setlist).
+		boss.revealed = boss.size in RogueCatalog.VISIBLE_SIZES
 		bosses.append(boss)
 
 
@@ -131,9 +134,9 @@ func prepare_song() -> RoguePrepared:
 func finish_song(prepared: RoguePrepared, result: Dictionary) -> Dictionary:
 	var out := {"passed": false, "money": 0, "reason": ""}
 	if bool(result.get("lost", false)):
-		out["reason"] = "Superaste el límite de fallos"
+		out["reason"] = Lang.t("Superaste el límite de fallos")
 	elif int(result.get("score", 0)) < prepared.target_score:
-		out["reason"] = "No llegaste a la puntuación (%d de %d)" % [
+		out["reason"] = Lang.t("No llegaste a la puntuación (%d de %d)") % [
 			int(result.get("score", 0)), prepared.target_score]
 	else:
 		out["passed"] = true
@@ -232,17 +235,17 @@ func price(offer: Dictionary) -> int:
 ## bien o el motivo por el que no.
 func buy(offer_index: int, lane: int = -1) -> String:
 	if offer_index < 0 or offer_index >= offers.size():
-		return "Esa oferta no existe"
+		return Lang.t("Esa oferta no existe")
 	var offer := offers[offer_index]
 	if offer["sold"]:
-		return "Ya lo compraste"
+		return Lang.t("Ya lo compraste")
 	var cost := price(offer)
 	if cost > money:
-		return "No tienes dinero suficiente"
+		return Lang.t("No tienes dinero suficiente")
 	var kind: RogueCatalog.ItemKind = offer["kind"]
 	var id: String = offer["id"]
 	if kind == RogueCatalog.ItemKind.ARROW and (lane < 0 or lane >= Lanes.COUNT):
-		return "Elige en qué flecha ponerla"
+		return Lang.t("Elige en qué flecha ponerla")
 
 	money -= cost
 	offer["sold"] = true

@@ -15,6 +15,13 @@ const SIZE_LETTER := {
 	RogueCatalog.Size.BIG: "G",
 	RogueCatalog.Size.FINAL: "J",
 }
+## Las mismas en ingles: Small, Medium, Big, Final.
+const SIZE_LETTER_EN := {
+	RogueCatalog.Size.SMALL: "S",
+	RogueCatalog.Size.MEDIUM: "M",
+	RogueCatalog.Size.BIG: "B",
+	RogueCatalog.Size.FINAL: "F",
+}
 
 var _pool: RoguePool
 var _first: Control
@@ -59,28 +66,16 @@ func _ready() -> void:
 
 func _build_intro(root: VBoxContainer, finished: RogueRun) -> void:
 	if finished != null and finished.state == RogueRun.State.WON:
-		root.add_child(_centered(_label("¡Superaste los 10 jefes! Partida ganada.", 20, Color("2ee6a8"))))
+		root.add_child(_centered(_label(Lang.t("¡Superaste los 10 jefes! Partida ganada."), 20, Color("2ee6a8"))))
 	elif finished != null and finished.state == RogueRun.State.LOST:
-		root.add_child(_centered(_label("Perdiste en la canción %d de %d." % [
+		root.add_child(_centered(_label(Lang.t("Perdiste en la canción %d de %d.") % [
 			finished.index + 1, finished.songs_total()], 20, Color("f9393f"))))
 
 	var panel := PanelContainer.new()
 	panel.theme_type_variation = "InsetPanel"
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root.add_child(panel)
-	var rules := _label("\n".join([
-		"10 canciones seguidas: Pequeña, Mediana y Grande tres veces, y el Jefe.",
-		"",
-		"• Pequeño: %s." % RogueCatalog.size_summary(RogueCatalog.Size.SMALL),
-		"• Mediano: %s." % RogueCatalog.size_summary(RogueCatalog.Size.MEDIUM),
-		"• Grande: %s." % RogueCatalog.size_summary(RogueCatalog.Size.BIG),
-		"• Jefe: %s." % RogueCatalog.size_summary(RogueCatalog.Size.FINAL),
-		"• Cada canción tiene una puntuación que alcanzar y un límite de fallos, que baja a cada vuelta.",
-		"• Si fallas de más o no llegas a la puntuación, la partida vuelve a empezar desde cero.",
-		"• Al pasar una canción ganas dinero según los fallos que te sobraron, y entras a la venta de garaje.",
-		"• Tienes 1 ranura de mejora: se activa con Intro o Shift izquierdo, una vez por canción.",
-		"• Cada jefe tiene habilidades que no conocerás hasta empezar la canción.",
-	]), 15, GuiTheme.TEXT)
+	var rules := _label("\n".join(RogueCatalog.rules_lines()), 15, GuiTheme.TEXT)
 	panel.add_child(rules)
 
 	var missing := _pool.missing_sizes()
@@ -89,14 +84,14 @@ func _build_intro(root: VBoxContainer, finished: RogueRun) -> void:
 		for p in _pool.problems:
 			msg.append(p)
 		if not missing.is_empty():
-			msg.append("Faltan canciones de tamaño: %s (en roguelike/pool.json)" % ", ".join(missing))
+			msg.append(Lang.t("Faltan canciones de tamaño: %s (en roguelike/pool.json)") % ", ".join(missing))
 		root.add_child(_centered(_label("\n".join(msg), 13, Color("ff9f43"))))
 
 	var buttons := _button_row(root)
-	var start := _plank("Nueva partida", _on_new_run)
+	var start := _plank(Lang.t("Nueva partida"), _on_new_run)
 	start.disabled = not missing.is_empty()
 	buttons.add_child(start)
-	buttons.add_child(_plank("Volver al menú", _go_menu))
+	buttons.add_child(_plank(Lang.t("Volver al menú"), _go_menu))
 	_first = start if not start.disabled else buttons.get_child(1)
 
 
@@ -135,20 +130,20 @@ func _build_map(root: VBoxContainer, run: RogueRun) -> void:
 
 	var buttons := _button_row(root)
 	if run.state == RogueRun.State.SHOP:
-		_first = _plank("Ir a la venta de garaje",
+		_first = _plank(Lang.t("Ir a la venta de garaje"),
 			func() -> void: get_tree().change_scene_to_file(SHOP_SCENE))
 	else:
-		_first = _plank("Tocar canción %d" % (run.index + 1), _on_play)
+		_first = _plank(Lang.t("Tocar canción %d") % (run.index + 1), _on_play)
 	buttons.add_child(_first)
-	buttons.add_child(_plank("Abandonar partida", _on_abandon))
-	buttons.add_child(_plank("Menú principal", _go_menu))
+	buttons.add_child(_plank(Lang.t("Abandonar partida"), _on_abandon))
+	buttons.add_child(_plank(Lang.t("Menú principal"), _go_menu))
 
 
 func _boss_chip(boss: RogueBoss, current: int) -> Control:
 	var chip := PanelContainer.new()
 	chip.theme_type_variation = "InsetPanel"
 	chip.custom_minimum_size = Vector2(70, 0)
-	var l := _label("%d\n%s" % [boss.index + 1, SIZE_LETTER[boss.size]], 16, GuiTheme.TEXT)
+	var l := _label("%d\n%s" % [boss.index + 1, _size_letter(boss.size)], 16, GuiTheme.TEXT)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	if boss.index < current:
 		l.add_theme_color_override("font_color", Color("2ee6a8"))
@@ -162,11 +157,11 @@ func _boss_chip(boss: RogueBoss, current: int) -> Control:
 
 
 func _inventory_text(run: RogueRun) -> Label:
-	var lines: Array[String] = ["Dinero: %d monedas" % run.money, ""]
-	var slot: String = RogueCatalog.SLOT[run.slot_id]["name"] if run.slot_id != "" else "vacía"
-	lines.append("Ranura: %s" % slot)
+	var lines: Array[String] = [Lang.t("Dinero: %d monedas") % run.money, ""]
+	var slot: String = RogueCatalog.item_name(RogueCatalog.ItemKind.SLOT, run.slot_id) if run.slot_id != "" else Lang.t("vacía")
+	lines.append(Lang.t("Ranura: %s") % slot)
 	lines.append("")
-	lines.append("Flechas:")
+	lines.append(Lang.t("Flechas:"))
 	var any := false
 	for lane in Lanes.DISPLAY_ORDER:
 		var id := run.arrow_on(lane)
@@ -174,15 +169,15 @@ func _inventory_text(run: RogueRun) -> Label:
 			continue
 		any = true
 		var left := int(run.arrows[lane]["songs_left"])
-		var extra := " (%d canciones)" % left if left > 0 else ""
-		lines.append("  %s: %s%s" % [Lanes.NAMES[lane], RogueCatalog.ARROW[id]["name"], extra])
+		var extra := Lang.t(" (%d canciones)") % left if left > 0 else ""
+		lines.append("  %s: %s%s" % [Lanes.lane_name(lane), RogueCatalog.item_name(RogueCatalog.ItemKind.ARROW, id), extra])
 	if not any:
-		lines.append("  ninguna mejorada")
+		lines.append(Lang.t("  ninguna mejorada"))
 	if not run.pending.is_empty():
 		lines.append("")
-		lines.append("Para la siguiente canción:")
+		lines.append(Lang.t("Para la siguiente canción:"))
 		for id in run.pending:
-			lines.append("  %s" % RogueCatalog.CONSUMABLE[id]["name"])
+			lines.append("  %s" % RogueCatalog.item_name(RogueCatalog.ItemKind.CONSUMABLE, id))
 	return _label("\n".join(lines), 15, GuiTheme.TEXT)
 
 
@@ -191,20 +186,20 @@ func _next_boss_text(run: RogueRun) -> Label:
 	var spec := boss.spec()
 	var song := _pool.find(boss.song_id)
 	var lines: Array[String] = [
-		"Canción %d: %s" % [boss.index + 1, boss.title()],
+		Lang.t("Canción %d: %s") % [boss.index + 1, boss.title()],
 		str(song.get("title", boss.song_id)),
 		"",
-		"Duración: %s, velocidad %s" % [RogueCatalog.duration_text(int(spec["duration_ms"])),
-			RogueCatalog.SPEED_NAMES[spec["speed"]]],
-		"Fallos permitidos: %d" % boss.miss_limit(),
+		Lang.t("Duración: %s, velocidad %s") % [RogueCatalog.duration_text(int(spec["duration_ms"])),
+			RogueCatalog.speed_name(spec["speed"])],
+		Lang.t("Fallos permitidos: %d") % boss.miss_limit(),
 		"",
-		"Habilidades:",
+		Lang.t("Habilidades:"),
 	]
 	if boss.revealed:
 		for id in boss.abilities:
-			lines.append("  %s — %s" % [RogueCatalog.ability_name(id), RogueCatalog.ABILITY[id]["desc"]])
+			lines.append("  %s — %s" % [RogueCatalog.ability_name(id), RogueCatalog.ability_desc(id)])
 	else:
-		lines.append("  ??? (se revelan al empezar)")
+		lines.append(Lang.t("  ??? (se revelan al empezar)"))
 	return _label("\n".join(lines), 15, GuiTheme.TEXT)
 
 
@@ -264,3 +259,11 @@ static func _plank(text: String, on_press: Callable) -> Button:
 	b.custom_minimum_size = Vector2(250, 50)
 	b.pressed.connect(on_press)
 	return b
+
+
+## Letra del tamano en las fichas del mapa. Va aparte de Lang: una letra suelta
+## como clave de traduccion acabaria traduciendo tambien una tecla "G" o "J".
+static func _size_letter(size: RogueCatalog.Size) -> String:
+	if TranslationServer.get_locale().begins_with("es"):
+		return SIZE_LETTER[size]
+	return SIZE_LETTER_EN[size]

@@ -24,6 +24,10 @@ var travel_time_ms := DEFAULT_TRAVEL_MS
 
 var last_audio_dir := "user://"
 
+## Idioma de la interfaz ("es" / "en", ver Lang). Vacio hasta leer la config:
+## sin config se elige segun el idioma del sistema.
+var language := ""
+
 # --- Teclas ---
 #
 # Cada carril tiene dos teclas: principal y secundaria, para poder jugar con
@@ -41,6 +45,11 @@ const SLOT_COUNT := 2
 const SLOT_NAMES: Array[String] = ["Principal", "Secundaria"]
 
 const NO_KEY := 0
+
+
+static func slot_name(slot: int) -> String:
+	return Lang.t(SLOT_NAMES[slot])
+
 
 ## Indice = id de carril: 0=izq, 1=abajo, 2=arriba, 3=derecha, 4=espacio
 const DEFAULT_KEYS: Array[int] = [KEY_LEFT, KEY_DOWN, KEY_UP, KEY_RIGHT, KEY_SPACE]
@@ -69,7 +78,25 @@ signal bindings_changed()
 
 func _ready() -> void:
 	load_settings()
+	if language not in Lang.CODES:
+		language = Lang.system_default()
+	Lang.apply(_cmdline_language())
 	apply_bindings()
+
+
+## "godot ... -- --lang=en" arranca en ese idioma sin guardarlo (para probar
+## y sacar capturas sin tocar la eleccion del jugador).
+func _cmdline_language() -> String:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--lang=") and arg.trim_prefix("--lang=") in Lang.CODES:
+			return arg.trim_prefix("--lang=")
+	return language
+
+
+func set_language(code: String) -> void:
+	language = code
+	Lang.apply(code)
+	save_settings()
 
 
 func load_settings() -> void:
@@ -80,6 +107,7 @@ func load_settings() -> void:
 	offset_ms = int(cfg.get_value("timing", "offset_ms", offset_ms))
 	travel_time_ms = int(cfg.get_value("gameplay", "travel_time_ms", travel_time_ms))
 	last_audio_dir = str(cfg.get_value("paths", "last_audio_dir", last_audio_dir))
+	language = str(cfg.get_value("general", "language", language))
 
 	# "key_bindings" es la clave que ya usaban los settings de una sola tecla,
 	# asi que una config antigua se lee sola y hereda la secundaria por defecto.
@@ -119,6 +147,7 @@ func save_settings() -> void:
 	cfg.set_value("timing", "offset_ms", offset_ms)
 	cfg.set_value("gameplay", "travel_time_ms", travel_time_ms)
 	cfg.set_value("paths", "last_audio_dir", last_audio_dir)
+	cfg.set_value("general", "language", language)
 	cfg.set_value("input", "key_bindings", key_bindings)
 	cfg.set_value("input", "key_bindings_alt", key_bindings_alt)
 	cfg.save(CONFIG_PATH)
@@ -170,7 +199,7 @@ func set_binding(slot: int, lane: int, physical_keycode: int) -> String:
 	if physical_keycode == NO_KEY:
 		return clear_binding(slot, lane)
 	if physical_keycode in RESERVED:
-		return "Esa tecla esta reservada, elige otra"
+		return Lang.t("Esa tecla está reservada, elige otra")
 
 	var previous := binding(slot, lane)
 	var owner := find_key(physical_keycode)
@@ -180,7 +209,7 @@ func set_binding(slot: int, lane: int, physical_keycode: int) -> String:
 		# Intercambiar dejaria sin tecla al otro hueco. La secundaria puede
 		# quedarse vacia; la principal no, o ese carril deja de responder.
 		if owner[0] == SLOT_PRIMARY and previous == NO_KEY:
-			return "Esa tecla es la principal de %s, cambiala alli primero" % Lanes.NAMES[owner[1]]
+			return Lang.t("Esa tecla es la principal de %s, cámbiala allí primero") % Lanes.lane_name(owner[1])
 		slot_keys(owner[0])[owner[1]] = previous
 
 	slot_keys(slot)[lane] = physical_keycode
@@ -192,7 +221,7 @@ func set_binding(slot: int, lane: int, physical_keycode: int) -> String:
 ## Quita la tecla de un hueco. Solo la secundaria puede quedarse vacia.
 func clear_binding(slot: int, lane: int) -> String:
 	if slot == SLOT_PRIMARY:
-		return "La tecla principal no se puede quitar"
+		return Lang.t("La tecla principal no se puede quitar")
 	key_bindings_alt[lane] = NO_KEY
 	apply_bindings()
 	save_settings()
@@ -206,14 +235,14 @@ func apply_preset(slot: int, preset_name: String) -> String:
 	var candidate: Array[int] = slot_keys(slot).duplicate()
 	if preset_name == "":
 		if slot == SLOT_PRIMARY:
-			return "La tecla principal no se puede quitar"
+			return Lang.t("La tecla principal no se puede quitar")
 		candidate.fill(NO_KEY)
 	elif PRESETS.has(preset_name):
 		var keys: Array = PRESETS[preset_name]
 		for i in DIRECTION_LANES.size():
 			candidate[DIRECTION_LANES[i]] = keys[i]
 	else:
-		return "Preset desconocido"
+		return Lang.t("Preset desconocido")
 
 	# Dentro de la ranura: si el espacio tenia una tecla que el preset reparte a
 	# una flecha, el espacio la suelta (o, si es la principal, se rechaza: no
@@ -221,7 +250,7 @@ func apply_preset(slot: int, preset_name: String) -> String:
 	var space_key := candidate[Lanes.SPACE]
 	if space_key != NO_KEY and candidate.count(space_key) > 1:
 		if slot == SLOT_PRIMARY:
-			return "El espacio usa %s, cambialo primero" % Lanes.key_name(space_key)
+			return Lang.t("El espacio usa %s, cámbialo primero") % Lanes.key_name(space_key)
 		candidate[Lanes.SPACE] = NO_KEY
 
 	var other := SLOT_SECONDARY if slot == SLOT_PRIMARY else SLOT_PRIMARY
@@ -230,7 +259,7 @@ func apply_preset(slot: int, preset_name: String) -> String:
 		# La principal no puede vaciarse para dejar sitio a la secundaria.
 		for k in candidate:
 			if k != NO_KEY and k in other_keys:
-				return "Esas teclas ya son las principales, cambialas primero"
+				return Lang.t("Esas teclas ya son las principales, cámbialas primero")
 	else:
 		# La secundaria si cede: se le quitan las teclas que pasan a la principal.
 		for k in candidate:

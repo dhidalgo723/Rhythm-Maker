@@ -29,13 +29,13 @@ func _ready() -> void:
 	root.add_theme_constant_override("separation", 12)
 	panel.add_child(root)
 
-	var title := _center_label("MODO EDICION", 36)
+	var title := _center_label(Lang.t("MODO EDICIÓN"), 36)
 	title.add_theme_color_override("font_color", GuiTheme.TEXT_FOCUS)
 	root.add_child(title)
 	root.add_child(_center_label(
-		"1. Carga un audio   2. Grabalo tocando las flechas   3. Se guarda en tu biblioteca", 14))
+		Lang.t("1. Carga un audio   2. Grábalo tocando las flechas   3. Se guarda en tu biblioteca"), 14))
 
-	_file_label = _center_label("Ningun audio cargado", 20)
+	_file_label = _center_label(Lang.t("Ningún audio cargado"), 20)
 	root.add_child(_file_label)
 
 	_warning = _center_label("", 14)
@@ -43,7 +43,7 @@ func _ready() -> void:
 	root.add_child(_warning)
 
 	_load_btn = Button.new()
-	_load_btn.text = "Cargar audio (WAV / MP3 / OGG)"
+	_load_btn.text = Lang.t("Cargar audio (WAV / MP3 / OGG)")
 	_load_btn.theme_type_variation = "BigButton"
 	_load_btn.custom_minimum_size = Vector2(460, 52)
 	_load_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -55,15 +55,15 @@ func _ready() -> void:
 	name_row.add_theme_constant_override("separation", 8)
 	root.add_child(name_row)
 	var name_lbl := Label.new()
-	name_lbl.text = "Nombre:"
+	name_lbl.text = Lang.t("Nombre:")
 	name_row.add_child(name_lbl)
 	_title_edit = LineEdit.new()
 	_title_edit.custom_minimum_size = Vector2(260, 0)
-	_title_edit.placeholder_text = "titulo de la grabacion"
+	_title_edit.placeholder_text = Lang.t("título de la grabación")
 	name_row.add_child(_title_edit)
 
 	_record_btn = Button.new()
-	_record_btn.text = "EMPEZAR GRABACION"
+	_record_btn.text = Lang.t("EMPEZAR GRABACIÓN")
 	_record_btn.theme_type_variation = "BigButton"
 	_record_btn.custom_minimum_size = Vector2(460, 56)
 	_record_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -72,7 +72,7 @@ func _ready() -> void:
 	root.add_child(_record_btn)
 
 	var back := Button.new()
-	back.text = "Volver"
+	back.text = Lang.t("Volver")
 	back.custom_minimum_size = Vector2(200, 40)
 	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	back.pressed.connect(func() -> void: get_tree().change_scene_to_file(MENU_SCENE))
@@ -107,7 +107,7 @@ func _on_load_pressed() -> void:
 
 func _on_file_selected(path: String) -> void:
 	if not Session.set_audio(path):
-		_file_label.text = "No se pudo cargar: %s" % path.get_file()
+		_file_label.text = Lang.t("No se pudo cargar: %s") % path.get_file()
 		return
 	_title_edit.text = Session.song_title()
 	_refresh()
@@ -122,9 +122,9 @@ func _refresh() -> void:
 			Session.song_name(), int(len_s) / 60, int(len_s) % 60]
 		_record_btn.disabled = false
 		_warning.text = "" if AudioLoader.is_timing_reliable(Session.audio_path) \
-			else "MP3: el decoder puede meter padding al inicio. Para timing exacto, usa WAV."
+			else Lang.t("MP3: el decoder puede meter padding al inicio. Para timing exacto, usa WAV.")
 	else:
-		_file_label.text = "Ningun audio cargado"
+		_file_label.text = Lang.t("Ningún audio cargado")
 		_record_btn.disabled = true
 		_warning.text = ""
 

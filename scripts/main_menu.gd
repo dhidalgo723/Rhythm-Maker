@@ -24,7 +24,7 @@ func _ready() -> void:
 	add_child(root)
 
 	var title := Label.new()
-	title.text = "RHYTHM CREATOR"
+	title.text = "BEAT DROP"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 52)
 	title.add_theme_color_override("font_color", GuiTheme.TEXT_FOCUS)
@@ -32,7 +32,7 @@ func _ready() -> void:
 	root.add_child(title)
 
 	var sub := Label.new()
-	sub.text = "Graba tu propio chart y juegalo"
+	sub.text = Lang.t("Graba tu propio chart y juégalo")
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.add_theme_color_override("font_color", GuiTheme.TEXT_DIM)
 	root.add_child(sub)
@@ -48,23 +48,23 @@ func _ready() -> void:
 	buttons.add_theme_constant_override("separation", 8)
 	panel.add_child(buttons)
 
-	_first = _menu_button("MODO EDICION",
+	_first = _menu_button(Lang.t("MODO EDICIÓN"),
 		func() -> void: get_tree().change_scene_to_file(EDIT_SCENE))
 	buttons.add_child(_first)
-	buttons.add_child(_menu_button("MODO JUEGO",
+	buttons.add_child(_menu_button(Lang.t("MODO JUEGO"),
 		func() -> void: get_tree().change_scene_to_file(SELECT_SCENE)))
 	buttons.add_child(_menu_button("ROGUELIKE",
 		func() -> void: get_tree().change_scene_to_file(ROGUE_SCENE)))
-	buttons.add_child(_menu_button("AJUSTES",
+	buttons.add_child(_menu_button(Lang.t("AJUSTES"),
 		func() -> void: get_tree().change_scene_to_file(SETTINGS_SCENE)))
-	buttons.add_child(_menu_button("SALIR",
+	buttons.add_child(_menu_button(Lang.t("SALIR"),
 		func() -> void: get_tree().quit()))
 
 	var info := Label.new()
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	info.add_theme_color_override("font_color", GuiTheme.TEXT_DIM)
 	info.add_theme_font_size_override("font_size", 14)
-	info.text = "%d grabaciones   -   teclas %s   -   W/S o flechas para moverte, Intro para elegir" % [
+	info.text = Lang.t("%d grabaciones   -   teclas %s   -   W/S o flechas para moverte, Intro para elegir") % [
 		Library.list_songs().size(), Lanes.keys_hint()]
 	root.add_child(_spacer(8))
 	root.add_child(info)
