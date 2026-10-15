@@ -378,6 +378,8 @@ func _show_rogue_results(lost: bool) -> void:
 	var out := run.finish_song(_prepared, {
 		"score": _pm.score, "misses": _pm.misses, "lost": lost,
 		"coin_perfects": _pm.coin_perfects,
+		"accuracy": _pm.accuracy(), "perfects": _pm.count(Judgement.Kind.PERFECT),
+		"max_combo": _pm.max_combo,
 	})
 	_judge_label.text = ""
 	_timing_label.text = ""

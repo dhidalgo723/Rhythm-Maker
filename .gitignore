@@ -29,3 +29,6 @@ Fonts/
 # Audio que no es del proyecto
 tests/EL CONTROL ft.KafaeskeThief.wav
 tests/EL CONTROL ft.KafaeskeThief.wav.import
+
+# Maquetas generadas por tests/mockup_map.tscn: llevan piezas de GUI/
+mockups/

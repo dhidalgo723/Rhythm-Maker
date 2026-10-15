@@ -27,8 +27,11 @@ var bosses: Array[RogueBoss] = []
 ## Las 3 cajas de la tienda (izquierda, centro, derecha):
 ## {"kind": ItemKind, "id": String, "sold": bool}.
 var offers: Array[Dictionary] = []
-## Resultado de la ultima cancion (para la pantalla de resultados).
+## Resultado de la ultima cancion: lo que devuelve finish_song() (pantalla de
+## resultados y mapa).
 var last_result := {}
+## Jefes superados en esta partida.
+var bosses_beaten := 0
 
 var _rng := RandomNumberGenerator.new()
 
@@ -130,9 +133,18 @@ func prepare_song() -> RoguePrepared:
 
 
 ## Cierra la cancion actual. `result`: {score, misses, lost (bool), coin_perfects
-## (PackedInt32Array)}. Devuelve lo que paso: {passed, money, reason}.
+## (PackedInt32Array), y para el mapa accuracy, perfects y max_combo}.
+## Devuelve lo que paso: {passed, money, reason} mas las cifras de la cancion
+## (boss_index, score, target, misses, miss_limit, accuracy, perfects, max_combo).
 func finish_song(prepared: RoguePrepared, result: Dictionary) -> Dictionary:
-	var out := {"passed": false, "money": 0, "reason": ""}
+	var out := {
+		"passed": false, "money": 0, "reason": "",
+		"boss_index": index,
+		"score": int(result.get("score", 0)), "target": prepared.target_score,
+		"misses": int(result.get("misses", 0)), "miss_limit": prepared.rules.miss_limit,
+		"accuracy": float(result.get("accuracy", 0.0)),
+		"perfects": int(result.get("perfects", 0)), "max_combo": int(result.get("max_combo", 0)),
+	}
 	if bool(result.get("lost", false)):
 		out["reason"] = Lang.t("Superaste el límite de fallos")
 	elif int(result.get("score", 0)) < prepared.target_score:
@@ -148,6 +160,7 @@ func finish_song(prepared: RoguePrepared, result: Dictionary) -> Dictionary:
 
 	out["money"] = song_reward(prepared, result)
 	money += out["money"]
+	bosses_beaten += 1
 	_age_arrows()
 	index += 1
 	if index >= songs_total():

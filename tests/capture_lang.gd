@@ -21,6 +21,14 @@ func _ready() -> void:
 		run.money = 9
 		Session.rogue_run = run
 		await _scene_shot("rogue_menu", "lang_%s_mapa" % code)
+		# Despues de pasar la primera: el mapa ensena como fue.
+		var p := run.prepare_song()
+		run.finish_song(p, {"score": p.target_score + 1720, "misses": 3, "accuracy": 94.3,
+			"perfects": 31, "max_combo": 22})
+		run.slot_id = "metronomo"
+		run.arrows = {0: {"id": "dorada", "songs_left": 2}}
+		run.pending.assign(["cuerdas"])
+		await _scene_shot("rogue_menu", "lang_%s_mapa_tras_cancion" % code)
 		run.state = RogueRun.State.SHOP
 		run.money = 30
 		run.offers.assign([

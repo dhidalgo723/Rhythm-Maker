@@ -45,7 +45,11 @@ func _test_switch() -> void:
 	_check(Lanes.lane_name(0) == "Left", "en ingles, el carril 0 deberia ser Left")
 	_check(RogueCatalog.item_name(RogueCatalog.ItemKind.ARROW, "dorada") == "Golden Arrow",
 		"los nombres del catalogo deberian traducirse")
+	_check(Lang.number(5120) == "5,120" and Lang.decimal(94.3) == "94.3", "numeros en ingles: 5,120 y 94.3")
 	Lang.apply("es")
+	_check(Lang.number(5120) == "5.120" and Lang.number(1234567) == "1.234.567" and Lang.number(42) == "42",
+		"numeros en espanol: 5.120 / 1.234.567 / 42 (sale %s)" % Lang.number(5120))
+	_check(Lang.decimal(94.3) == "94,3" and Lang.decimal(94.0) == "94,0", "decimales en espanol: 94,3 / 94,0")
 	# Sin locale/fallback = "es" en project.godot, Godot usaria la traduccion
 	# inglesa tambien aqui.
 	_check(Lang.t("Volver") == "Volver", "en espanol, Volver deberia quedarse igual (es %s)" % Lang.t("Volver"))

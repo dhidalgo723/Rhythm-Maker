@@ -8,7 +8,8 @@ const CONFIG_PATH := "user://settings.cfg"
 ## lo que ya hay guardado (ver load_settings).
 ##   1: original, 4 carriles
 ##   2: carril espacio y notas visibles con mas antelacion
-const SETTINGS_VERSION := 2
+##   3: idioma (las configs anteriores son de cuando solo habia espanol)
+const SETTINGS_VERSION := 3
 
 ## Offset de calibracion, en ms.
 ## Positivo = los inputs del usuario llegan TARDE respecto al audio que oye.
@@ -108,6 +109,8 @@ func load_settings() -> void:
 	travel_time_ms = int(cfg.get_value("gameplay", "travel_time_ms", travel_time_ms))
 	last_audio_dir = str(cfg.get_value("paths", "last_audio_dir", last_audio_dir))
 	language = str(cfg.get_value("general", "language", language))
+	if language == "" and version < 3:
+		language = "es"
 
 	# "key_bindings" es la clave que ya usaban los settings de una sola tecla,
 	# asi que una config antigua se lee sola y hereda la secundaria por defecto.

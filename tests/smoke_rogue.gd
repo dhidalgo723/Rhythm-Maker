@@ -238,6 +238,9 @@ func _test_money() -> void:
 	run = _run()
 	p = run.prepare_song()
 	out = run.finish_song(p, {"score": 999999, "misses": 0, "lost": true})
+	_check(out["boss_index"] == 0 and out["score"] == 999999 and out["miss_limit"] == p.rules.miss_limit,
+		"el resultado guarda las cifras de la cancion para el mapa")
+	_check(run.bosses_beaten == 0, "perder no suma jefes superados")
 	_check(not out["passed"] and run.state == RogueRun.State.LOST, "pasarse de fallos pierde")
 	print("[dinero] base + bono por fallos, Hucha, Contrato, Impuesto; ganar y perder")
 

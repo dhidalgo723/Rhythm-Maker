@@ -35,3 +35,26 @@ static func apply(code: String) -> void:
 		TranslationServer.add_translation(en)
 		_registered = true
 	TranslationServer.set_locale(code)
+
+
+## Entero con separador de miles: 5120 -> "5.120" en espanol, "5,120" en ingles.
+static func number(n: int) -> String:
+	var digits := str(absi(n))
+	var sep := "." if _spanish() else ","
+	var out := ""
+	while digits.length() > 3:
+		out = sep + digits.right(3) + out
+		digits = digits.left(digits.length() - 3)
+	return ("-" if n < 0 else "") + digits + out
+
+
+## Decimal con la coma o el punto que toca: 94.3 -> "94,3" / "94.3".
+static func decimal(value: float, decimals: int = 1) -> String:
+	var text := String.num(value, decimals)
+	if decimals > 0 and not "." in text:
+		text += "." + "0".repeat(decimals)
+	return text.replace(".", ",") if _spanish() else text
+
+
+static func _spanish() -> bool:
+	return TranslationServer.get_locale().begins_with("es")
