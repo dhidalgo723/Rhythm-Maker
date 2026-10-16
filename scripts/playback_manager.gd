@@ -22,6 +22,9 @@ const FORCED_REACH_MS := 400.0
 const HOLD_RELEASE_TOLERANCE_MS := 150.0
 ## Tope de velocidad extra que puede acumular el Abucheo.
 const MAX_SCROLL_BOOST := 1.0
+## Sin un final marcado en el chart (las grabaciones de Juego Libre), la
+## cancion acaba este rato despues de la ultima nota, aunque el audio siga.
+const AFTER_LAST_NOTE_MS := 1000.0
 
 signal note_hit(lane: int, kind: Judgement.Kind, delta_ms: float)
 signal note_missed(lane: int)
@@ -36,10 +39,11 @@ signal hold_completed(lane: int)
 signal hold_broken(lane: int)
 signal slot_stolen()
 signal bis_triggered()
-signal keys_rotated(shift: int)
 
 var clock: SongClock
 var chart: Chart
+## Donde acaba la ultima nota del chart (ms), o 0 si no tiene notas.
+var _last_note_end_ms := 0.0
 var rules := PlayRules.new()
 
 var score := 0
@@ -55,15 +59,12 @@ var misses := 0
 var miss_log: Array[Dictionary] = []
 ## Perfectos por carril en carriles con Flecha Hucha.
 var coin_perfects := PackedInt32Array()
-## Rotacion actual de las flechas (Cambio de Clave).
-var key_shift := 0
 ## Velocidad extra acumulada por el Abucheo.
 var scroll_boost := 0.0
 
 var _lane_notes: Array[Array] = []
 var _lane_head := PackedInt32Array()
 var _real_notes := 0
-var _notes_done := 0
 var _shield_used := PackedByteArray()
 var _consecutive_misses := 0
 var _bis_used := false
@@ -71,6 +72,8 @@ var _boss_shield_up := false
 var _boss_shield_streak := 0
 var _boss_shield_down_at := 0.0
 var _silenced := false
+## Hay un tramo de Teclas Mezcladas ahora (para avisar al entrar y al salir).
+var _shuffled := false
 var _active := false
 var _finished := false
 
@@ -91,7 +94,9 @@ func start(stream: AudioStream, song_chart: Chart, play_rules: PlayRules = null)
 	for i in Lanes.COUNT:
 		_lane_notes.append([])
 	_real_notes = 0
+	_last_note_end_ms = 0.0
 	for n in chart.notes:
+		_last_note_end_ms = maxf(_last_note_end_ms, float(n.end_ms()))
 		if n.lane < 0 or n.lane >= Lanes.COUNT:
 			continue
 		if n.lane in rules.disabled_lanes:
@@ -114,14 +119,13 @@ func start(stream: AudioStream, song_chart: Chart, play_rules: PlayRules = null)
 	miss_log.clear()
 	counts = PackedInt32Array()
 	counts.resize(Judgement.Kind.size())
-	key_shift = 0
 	scroll_boost = 0.0
-	_notes_done = 0
 	_consecutive_misses = 0
 	_bis_used = false
 	_boss_shield_up = rules.boss_shield_perfects > 0
 	_boss_shield_streak = 0
 	_silenced = false
+	_shuffled = false
 	_finished = false
 	_active = true
 
@@ -150,9 +154,14 @@ func get_time_ms() -> float:
 ## Duracion jugable: hasta chart.end_ms si lo hay, si no hasta el final del audio.
 func song_length_ms() -> float:
 	var audio := clock.get_length_ms()
+	var end := 0.0
 	if chart != null and chart.end_ms > 0:
-		return minf(float(chart.end_ms), audio) if audio > 0.0 else float(chart.end_ms)
-	return audio
+		end = float(chart.end_ms)
+	elif _last_note_end_ms > 0.0:
+		end = _last_note_end_ms + AFTER_LAST_NOTE_MS
+	if end <= 0.0:
+		return audio
+	return minf(end, audio) if audio > 0.0 else end
 
 
 ## 0..1: cuanto de la cancion ha pasado.
@@ -243,14 +252,6 @@ func scroll_multiplier(t_ms: float) -> float:
 	return m
 
 
-## Carril al que va una tecla con la rotacion de Cambio de Clave aplicada.
-func remap_lane(lane: int) -> int:
-	if key_shift == 0 or not lane in Settings.DIRECTION_LANES:
-		return lane
-	var dirs := Settings.DIRECTION_LANES
-	return dirs[(dirs.find(lane) + key_shift) % dirs.size()]
-
-
 # --- Bucle ---
 
 func _process(_delta: float) -> void:
@@ -259,6 +260,7 @@ func _process(_delta: float) -> void:
 	var t := get_time_ms()
 	_update_audio_effects(t)
 	_update_boss_shield(t)
+	_update_shuffle_notice(t)
 
 	for lane in Lanes.COUNT:
 		_sweep_lane(lane, t)
@@ -303,9 +305,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	var released := Lanes.lane_released(event)
 	if released != -1:
-		var lane_r := remap_lane(released)
-		lane_released.emit(lane_r)
-		judge_release(lane_r, get_time_ms())
+		lane_released.emit(released)
+		judge_release(released, get_time_ms())
 		return
 
 	var pressed := Lanes.lane_pressed(event)
@@ -313,9 +314,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	get_viewport().set_input_as_handled()
-	var lane := remap_lane(pressed)
-	lane_pressed.emit(lane)
-	judge_press(lane, get_time_ms())
+	lane_pressed.emit(pressed)
+	judge_press(pressed, get_time_ms())
 
 
 ## Juzga un toque en un carril en un instante de cancion dado. Separado de
@@ -564,7 +564,6 @@ func _hit(pn: PlayNote, kind: int, delta: float, t_ms: float) -> void:
 
 	pn.state = PlayNote.State.HOLDING if pn.note.is_hold() else PlayNote.State.HIT
 	_advance_head(lane)
-	_note_done()
 	note_hit.emit(lane, kind, delta)
 	score_changed.emit(score, combo, misses)
 
@@ -600,8 +599,7 @@ func _register_miss(lane: int, pn: PlayNote, t_ms: float) -> void:
 	var delta := score - before
 	if pn != null:
 		pn.score_delta += delta
-		_note_done()
-	miss_log.append({"t": t_ms, "weight": weight, "delta": delta, "note": pn})
+		miss_log.append({"t": t_ms, "weight": weight, "delta": delta, "note": pn})
 
 	combo = 0
 	_boss_shield_streak = 0
@@ -614,7 +612,7 @@ func _register_miss(lane: int, pn: PlayNote, t_ms: float) -> void:
 	note_missed.emit(lane)
 	score_changed.emit(score, combo, misses)
 
-	if misses > rules.miss_limit:
+	if rules.miss_limit > 0 and misses > rules.miss_limit:
 		if rules.bis and not _bis_used:
 			_bis_used = true
 			misses = rules.miss_limit
@@ -636,13 +634,13 @@ func _undo_miss(entry: Dictionary) -> void:
 		pn.score_delta -= int(entry["delta"])
 
 
-## Cambio de Clave: rota las flechas cada N notas juzgadas.
-func _note_done() -> void:
-	_notes_done += 1
-	if rules.key_rotation_every > 0 and _notes_done % rules.key_rotation_every == 0:
-		key_shift = (key_shift + 1) % Settings.DIRECTION_LANES.size()
-		message.emit(Lang.t("¡Cambio de clave!"))
-		keys_rotated.emit(key_shift)
+## Teclas Mezcladas: avisa al entrar y al salir del tramo.
+func _update_shuffle_notice(t_ms: float) -> void:
+	var now := is_effect_active(TimedEffect.SHUFFLE_NOTES, t_ms)
+	if now == _shuffled:
+		return
+	_shuffled = now
+	message.emit(Lang.t("¡Teclas mezcladas!") if now else Lang.t("Las flechas vuelven a su carril"))
 
 
 func _update_boss_shield(t_ms: float) -> void:

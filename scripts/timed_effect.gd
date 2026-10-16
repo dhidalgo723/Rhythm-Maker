@@ -11,6 +11,7 @@ const ANY_KEY_PERFECT := "any_key_perfect" ## Beat Drop: da igual la tecla
 const WINDOW_X2 := "window_x2"             ## Afinador: ventana de acierto doble
 const SUSTAIN := "sustain"                 ## Pedal de Sustain: las largas no se rompen
 const SLOT_BLOCKED := "slot_blocked"       ## Acoplamiento: no se puede usar la ranura
+const SHUFFLE_NOTES := "shuffle_notes"     ## Teclas Mezcladas: las flechas caen por otras columnas (cada nota lleva la suya)
 # --- Audio ---
 const TEMPO := "tempo"                     ## data.tempo: 0.75 = 25% mas lento
 const SILENCE := "silence"                 ## Silencio: se corta la musica

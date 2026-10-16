@@ -51,7 +51,7 @@ func _ready() -> void:
 	_first = _menu_button(Lang.t("MODO EDICIÓN"),
 		func() -> void: get_tree().change_scene_to_file(EDIT_SCENE))
 	buttons.add_child(_first)
-	buttons.add_child(_menu_button(Lang.t("MODO JUEGO"),
+	buttons.add_child(_menu_button(Lang.t("JUEGO LIBRE"),
 		func() -> void: get_tree().change_scene_to_file(SELECT_SCENE)))
 	buttons.add_child(_menu_button("ROGUELIKE",
 		func() -> void: get_tree().change_scene_to_file(ROGUE_SCENE)))

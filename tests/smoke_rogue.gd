@@ -17,6 +17,7 @@ func _ready() -> void:
 
 	_test_sequence()
 	_test_pool_durations()
+	_test_combo_songs()
 	_test_determinism()
 	_test_prepare()
 	_test_consumables()
@@ -29,6 +30,22 @@ func _ready() -> void:
 
 	print("SMOKE TEST %s" % ("FAIL" if _failed else "OK"))
 	get_tree().quit(1 if _failed else 0)
+
+
+## El Jefe Techno toca Coleccionista y el Rap Sax&Bass; los demas, la de
+## prueba sin combinacion.
+func _test_combo_songs() -> void:
+	_check(_pool.problems.is_empty(), "pool.json sin problemas: %s" % ", ".join(_pool.problems))
+	var want := {"techno": "coleccionista", "rap": "saxbass"}
+	var seen := {}
+	for seed in 400:
+		var run := RogueRun.create(_pool, seed)
+		var final := run.bosses[-1]
+		var expected: String = want.get(final.combo_id, "prueba_jefe")
+		_check(final.song_id == expected, "jefe %s: toca %s (deberia %s)" % [final.combo_id, final.song_id, expected])
+		seen[final.combo_id] = true
+	_check(seen.has("techno") and seen.has("rap"), "en 400 partidas salen Techno y Rap")
+	print("[canciones] Techno = Coleccionista, Rap = Sax&Bass, el resto la de prueba")
 
 
 func _check(cond: bool, msg: String) -> void:
@@ -46,23 +63,20 @@ func _run() -> RogueRun:
 
 func _test_sequence() -> void:
 	var seq := RogueCatalog.SEQUENCE
-	_check(seq.size() == 10, "deberian ser 10 canciones")
-	_check(seq.slice(0, 9) == [Size.SMALL, Size.MEDIUM, Size.BIG, Size.SMALL, Size.MEDIUM, Size.BIG,
-		Size.SMALL, Size.MEDIUM, Size.BIG], "secuencia Pequena -> Mediana -> Grande x3")
-	_check(seq[8] == Size.BIG and seq[9] == Size.FINAL, "la novena es Grande y la decima el Jefe")
+	_check(seq == [Size.SMALL, Size.MEDIUM, Size.MEDIUM, Size.BIG, Size.FINAL],
+		"secuencia: Pequeno, Mediano, Mediano, Grande y Jefe")
 
-	# "Cada vez hay que fallar menos": en cada tamano, el limite baja.
+	# El limite de cada cancion es el de su tamano.
 	var limits: Array[int] = []
 	for i in seq.size():
 		limits.append(RogueCatalog.miss_limit(i))
-	_check(limits[0] == 15 and limits[1] == 30 and limits[2] == 50, "primera vuelta: 15 / 30 / 50")
-	_check(limits[9] == 40, "el Jefe permite 40 fallos")
+	_check(limits == [5, 20, 20, 35, 30], "limites 5 / 20 / 20 / 35 / 30 (son %s)" % str(limits))
 	# Lo que se pidio para cada tamano: duracion, notas, fallos y velocidad.
 	var asked := {
-		Size.SMALL: [30000, 40, 15, "lenta"],
-		Size.MEDIUM: [60000, 60, 30, "media"],
-		Size.BIG: [120000, 180, 50, "rapida"],
-		Size.FINAL: [120000, 240, 40, "rapida"],
+		Size.SMALL: [30000, 40, 5, "lenta"],
+		Size.MEDIUM: [60000, 60, 20, "media"],
+		Size.BIG: [120000, 180, 35, "rapida"],
+		Size.FINAL: [120000, 270, 30, "rapida"],   # 135 por minuto
 	}
 	for size in asked:
 		var spec: Dictionary = RogueCatalog.SIZE_SPECS[size]
@@ -73,9 +87,6 @@ func _test_sequence() -> void:
 	_check(RogueCatalog.travel_ms(Size.SMALL) > RogueCatalog.travel_ms(Size.MEDIUM)
 		and RogueCatalog.travel_ms(Size.MEDIUM) > RogueCatalog.travel_ms(Size.BIG),
 		"lenta > media > rapida: las notas tardan menos en caer cuanto mas grande el jefe")
-	_check(limits[3] < limits[0] and limits[6] < limits[3], "los pequenos permiten cada vez menos")
-	_check(limits[4] < limits[1] and limits[7] < limits[4], "los medianos tambien")
-	_check(limits[5] < limits[2] and limits[8] < limits[5], "y los grandes")
 
 	var targets: Array[int] = []
 	for i in seq.size():
@@ -102,9 +113,13 @@ func _test_pool_durations() -> void:
 		_check(audio_ms >= spec["duration_ms"], "%s: el audio (%.1f s) es mas corto que el jefe (%d s)" % [
 			song["id"], audio_ms / 1000.0, spec["duration_ms"] / 1000])
 		var count := entry.chart.notes.size()
-		_check(count == spec["notes"], "%s: tiene %d notas, el jefe pide %d" % [song["id"], count, spec["notes"]])
 		var last := entry.chart.notes[-1].end_ms()
-		_check(last < spec["duration_ms"], "%s: hay notas despues de %d s" % [song["id"], spec["duration_ms"] / 1000])
+		# Las notas exactas solo se exigen a los charts de prueba. Las canciones
+		# grabadas tienen las que se grabaron, y se cortan a la duracion del jefe
+		# al jugarlas.
+		if str(song["id"]).begins_with("prueba_"):
+			_check(count == spec["notes"], "%s: tiene %d notas, el jefe pide %d" % [song["id"], count, spec["notes"]])
+			_check(last < spec["duration_ms"], "%s: hay notas despues de %d s" % [song["id"], spec["duration_ms"] / 1000])
 		var per_min := float(count) / (float(spec["duration_ms"]) / 60000.0)
 		print("  %-16s %-6s audio %6.1f s | jefe %3d s | %3d notas (%.0f/min) | ultima %.1f s" % [
 			song["id"], song["size"], audio_ms / 1000.0, spec["duration_ms"] / 1000, count, per_min, last / 1000.0])
@@ -133,7 +148,7 @@ func _test_determinism() -> void:
 # ---------------------------------------------------------------- Cancion
 
 func _test_prepare() -> void:
-	for i in [0, 1, 2, 9]:
+	for i in [0, 1, 3, 4]:
 		var run := _run()
 		run.index = i
 		var boss := run.current_boss()
@@ -146,7 +161,10 @@ func _test_prepare() -> void:
 		_check(is_equal_approx(p.length_ms, float(spec["duration_ms"])),
 			"cancion %d: dura %.0f ms, el jefe pide %d" % [i, p.length_ms, spec["duration_ms"]])
 		_check(p.chart.end_ms == spec["duration_ms"], "cancion %d: el chart acaba donde el jefe" % i)
-		_check(p.notes == spec["notes"], "cancion %d: %d notas jugables (pide %d)" % [i, p.notes, spec["notes"]])
+		# Las notas de cada tamano son las que se piden a los charts de prueba;
+		# las canciones grabadas tienen las que se grabaron.
+		if boss.song_id.begins_with("prueba_"):
+			_check(p.notes == spec["notes"], "cancion %d: %d notas jugables (pide %d)" % [i, p.notes, spec["notes"]])
 		_check(p.target_score > 0 and p.target_score < p.notes * 350, "cancion %d: objetivo razonable (%d)" % [i, p.target_score])
 		_check(p.rules.miss_limit == boss.miss_limit(), "cancion %d: limite de fallos del jefe" % i)
 		_check(p.rules.travel_time_ms == RogueCatalog.travel_ms(boss.size), "cancion %d: velocidad del jefe" % i)
@@ -246,10 +264,14 @@ func _test_money() -> void:
 
 
 func _test_shop() -> void:
+	for kind in [RogueCatalog.ItemKind.SLOT, RogueCatalog.ItemKind.CONSUMABLE]:
+		for id in RogueCatalog.table(kind):
+			_check(RogueArt.image_path(kind, id) != "", "%s no tiene imagen" % id)
+			_check(RogueArt.item_texture(kind, id, 64) != null, "la imagen de %s no se carga" % id)
 	var run := _run()
 	run.state = RogueRun.State.SHOP
 	run.money = 100
-	run.index = 2   # jefe grande: el unico que un Setlist tiene que revelar
+	run.index = 3   # jefe grande: el unico que un Setlist tiene que revelar
 	run.offers.assign([
 		{"kind": RogueCatalog.ItemKind.SLOT, "id": "metronomo", "sold": false},
 		{"kind": RogueCatalog.ItemKind.SLOT, "id": "pausa", "sold": false},
@@ -306,10 +328,29 @@ func _test_shop_boxes() -> void:
 	print("[cajas] izquierda consumible 100%%, centro ranura %.0f%%, derecha flecha %.0f%%" % [
 		center_slot * 100, right_arrow * 100])
 
+	# Lo comprado no vuelve a salir; sin consumibles por comprar, la caja
+	# izquierda queda vacia.
+	run = _run()
+	for id in RogueCatalog.CONSUMABLE:
+		if id != "setlist":
+			run.purchased[RogueRun.item_key(K.CONSUMABLE, id)] = true
+	run.purchased[RogueRun.item_key(K.SLOT, "metronomo")] = true
+	for i in 200:
+		run.seed = 5000 + i
+		run.roll_offers()
+		_check(run.offers[0]["id"] == "setlist", "solo queda el Setlist por comprar")
+		_check(run.offers[1]["id"] != "metronomo" and run.offers[2]["id"] != "metronomo",
+			"lo comprado no vuelve a salir")
+	run.money = 100
+	_check(run.buy(0) == "", "comprar el ultimo consumible")
+	_check(run.offers[0]["id"] == "" and run.offers[0]["sold"],
+		"sin nada que ofrecer, la caja izquierda queda vacia")
+	print("[cajas] lo comprado no vuelve a salir")
+
 
 # ---------------------------------------------------------------- Jefes
 
-func _prepare_with(abilities: Array, index: int = 2) -> RoguePrepared:
+func _prepare_with(abilities: Array, index: int = 3) -> RoguePrepared:
 	var run := _run()
 	run.index = index
 	run.current_boss().abilities.assign(abilities)
@@ -384,8 +425,34 @@ func _test_every_ability() -> void:
 				_check(decoys > 0 and p.notes < real_notes, "Carril Minado: notas convertidas en senuelos (%d)" % decoys)
 			"fantasma":
 				_check(r.ghost, "Notas Fantasma")
-			"cambio_clave":
-				_check(r.key_rotation_every == 125, "Cambio de Clave cada 125")
+			"teclas_mezcladas":
+				var e := _effect(r, TimedEffect.SHUFFLE_NOTES)
+				_check(e != null and is_equal_approx(e.end_ms - e.start_ms, p.length_ms * RogueCatalog.BOSS_SEGMENT),
+					"Teclas Mezcladas: un tramo del 20%")
+				if e != null:
+					var inside := 0
+					var moved := 0
+					var outside_moved := 0
+					for n in p.chart.notes:
+						if e.is_active(n.timestamp_ms):
+							inside += 1
+							if n.show_lane >= 0 and n.show_lane != n.lane:
+								moved += 1
+						elif n.show_lane >= 0:
+							outside_moved += 1
+					_check(inside > 0 and moved >= inside * 0.8,
+						"Teclas Mezcladas: las notas del tramo caen por otra columna (%d de %d)" % [moved, inside])
+					_check(outside_moved == 0, "Teclas Mezcladas: fuera del tramo, cada nota por su carril")
+					# Las que caen a la vez, por columnas distintas.
+					var at := {}
+					for n in p.chart.notes:
+						if n.show_lane >= 0:
+							var k := "%d:%d" % [n.timestamp_ms, n.show_lane]
+							_check(not at.has(k), "Teclas Mezcladas: dos notas a la vez por la misma columna")
+							at[k] = true
+			"rasgueo":
+				_check(holds > base_holds and p.notes > real_notes,
+					"Rasgueo: las largas se parten en trozos (%d largas, antes %d)" % [holds, base_holds])
 			"polirritmia":
 				_check(_has_triplets(p.chart), "Polirritmia: un carril en tresillos")
 			"pegajosas":
@@ -395,7 +462,7 @@ func _test_every_ability() -> void:
 	# El jefe final combina las suyas.
 	for combo in RogueCatalog.FINAL_COMBOS:
 		var abilities: Array = RogueCatalog.FINAL_COMBOS[combo]["abilities"]
-		var p := _prepare_with(abilities, 9)
+		var p := _prepare_with(abilities, 4)
 		_check(p != null and p.boss.active_abilities().size() == abilities.size(),
 			"jefe final %s: %d habilidades" % [combo, abilities.size()])
 	print("[jefes] las %d habilidades y los %d jefes finales se aplican" % [
@@ -496,7 +563,8 @@ func _test_every_slot() -> void:
 func _test_full_run() -> void:
 	var run := _run()
 	var visited_shops := 0
-	for i in 10:
+	var total := run.songs_total()
+	for i in total:
 		var p := run.prepare_song()
 		_check(p != null, "la cancion %d se prepara" % (i + 1))
 		if p == null:
@@ -505,6 +573,7 @@ func _test_full_run() -> void:
 		if run.state == RogueRun.State.SHOP:
 			visited_shops += 1
 			run.state = RogueRun.State.MAP
-	_check(run.state == RogueRun.State.WON, "tras 10 canciones superadas se gana")
-	_check(visited_shops == 9, "hay venta de garaje entre cancion y cancion (%d)" % visited_shops)
-	print("[partida] 10 canciones superadas = victoria, con %d visitas a la tienda" % visited_shops)
+	_check(total == 5, "una partida son 5 canciones")
+	_check(run.state == RogueRun.State.WON, "tras %d canciones superadas se gana" % total)
+	_check(visited_shops == total - 1, "hay venta de garaje entre cancion y cancion (%d)" % visited_shops)
+	print("[partida] %d canciones superadas = victoria, con %d visitas a la tienda" % [total, visited_shops])

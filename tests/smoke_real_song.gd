@@ -27,11 +27,25 @@ func _ready() -> void:
 
 	var notes := entry.chart.notes
 	var next := 0
+	# Notas largas mantenidas: carril -> ms en que hay que soltar.
+	var holding := {}
 	while pm.is_active() and pm.get_time_ms() < SECONDS * 1000.0:
 		await get_tree().process_frame
 		var t := pm.get_time_ms()
+		for lane in holding.keys():
+			if t >= float(holding[lane]):
+				_key(lane, false)
+				holding.erase(lane)
 		while next < notes.size() and float(notes[next].timestamp_ms) <= t:
-			_press(notes[next].lane)
+			var n: ChartNote = notes[next]
+			if holding.has(n.lane):
+				_key(n.lane, false)
+			_key(n.lane, true)
+			if n.duration_ms > 0:
+				holding[n.lane] = n.end_ms()
+			else:
+				_key(n.lane, false)
+				holding.erase(n.lane)
 			next += 1
 	pm.stop()
 
@@ -65,14 +79,10 @@ func _ready() -> void:
 	get_tree().quit(0 if ok else 1)
 
 
-## Pulsa la tecla que el jugador tiene asignada de verdad, no una fija.
-func _press(lane: int) -> void:
-	var key := Settings.binding(Settings.SLOT_PRIMARY, lane)
-	var down := InputEventKey.new()
-	down.physical_keycode = key
-	down.pressed = true
-	Input.parse_input_event(down)
-	var up := InputEventKey.new()
-	up.physical_keycode = key
-	up.pressed = false
-	Input.parse_input_event(up)
+## Pulsa o suelta la tecla que el jugador tiene asignada de verdad, no una
+## fija. Las notas largas se mantienen hasta su final, como haria el jugador.
+func _key(lane: int, pressed: bool) -> void:
+	var ev := InputEventKey.new()
+	ev.physical_keycode = Settings.binding(Settings.SLOT_PRIMARY, lane)
+	ev.pressed = pressed
+	Input.parse_input_event(ev)

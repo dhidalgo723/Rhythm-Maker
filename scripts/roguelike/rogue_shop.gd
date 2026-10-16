@@ -248,6 +248,11 @@ func _show_offer(i: int) -> void:
 	var kind: RogueCatalog.ItemKind = offer["kind"]
 	_info_kind.text = RogueCatalog.kind_name(kind)
 	_info_kind.add_theme_color_override("font_color", KIND_COLORS[kind])
+	if offer["id"] == "":
+		_info_name.text = Lang.t("Agotado")
+		_info_desc.text = Lang.t("Ya compraste todo lo que podía salir en esta caja.")
+		_info_price.text = ""
+		return
 	_info_name.text = RogueCatalog.item_name(kind, offer["id"])
 	_info_desc.text = RogueCatalog.item_desc(kind, offer["id"])
 	var price := _run.price(offer)
@@ -288,6 +293,9 @@ func _inventory_text() -> String:
 
 func _on_box_pressed(i: int) -> void:
 	var offer: Dictionary = _run.offers[i]
+	if offer["id"] == "":
+		_status.text = Lang.t("Esta caja está vacía")
+		return
 	if offer["sold"]:
 		_status.text = Lang.t("Ya lo compraste")
 		return

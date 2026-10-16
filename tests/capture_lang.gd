@@ -32,8 +32,8 @@ func _ready() -> void:
 		run.state = RogueRun.State.SHOP
 		run.money = 30
 		run.offers.assign([
-			{"kind": RogueCatalog.ItemKind.CONSUMABLE, "id": "cuerdas", "sold": false},
-			{"kind": RogueCatalog.ItemKind.SLOT, "id": "tocadiscos", "sold": false},
+			{"kind": RogueCatalog.ItemKind.CONSUMABLE, "id": "setlist", "sold": false},
+			{"kind": RogueCatalog.ItemKind.SLOT, "id": "beat_drop", "sold": false},
 			{"kind": RogueCatalog.ItemKind.ARROW, "id": "hielo", "sold": false},
 		])
 		var shop: Node = load("res://scenes/rogue_shop.tscn").instantiate()

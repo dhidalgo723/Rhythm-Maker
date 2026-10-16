@@ -25,8 +25,11 @@ var arrows := {}
 var pending: Array[String] = []
 var bosses: Array[RogueBoss] = []
 ## Las 3 cajas de la tienda (izquierda, centro, derecha):
-## {"kind": ItemKind, "id": String, "sold": bool}.
+## {"kind": ItemKind, "id": String, "sold": bool}. Una caja sin nada que
+## ofrecer (ya compraste todo lo de su tipo) tiene id "" y sale vendida.
 var offers: Array[Dictionary] = []
+## Todo lo comprado en la partida ("tipo:id"): no vuelve a salir en la tienda.
+var purchased := {}
 ## Resultado de la ultima cancion: lo que devuelve finish_song() (pantalla de
 ## resultados y mapa).
 var last_result := {}
@@ -82,7 +85,7 @@ func _generate_bosses() -> void:
 			boss.abilities.assign(RogueCatalog.FINAL_COMBOS[boss.combo_id]["abilities"])
 		else:
 			boss.abilities.append(_pick_ability(boss.size, used_abilities))
-		boss.song_id = _pick_song(boss.size, used_songs)
+		boss.song_id = _pick_song(boss.size, used_songs, boss.combo_id)
 		# Los jefes pequenos y medianos se ven desde el principio; los grandes y
 		# el final solo al empezar su cancion (o con un Setlist).
 		boss.revealed = boss.size in RogueCatalog.VISIBLE_SIZES
@@ -103,11 +106,13 @@ func _pick_ability(size: RogueCatalog.Size, used: Dictionary) -> String:
 	return pick
 
 
-## Cancion al azar de ese tamano, sin repetir mientras queden.
-func _pick_song(size: RogueCatalog.Size, used: Dictionary) -> String:
+## Cancion al azar de ese tamano, sin repetir mientras queden. El Jefe usa la
+## de su combinacion si la tiene (ver RoguePool.songs_for_combo).
+func _pick_song(size: RogueCatalog.Size, used: Dictionary, combo: String = "") -> String:
 	if pool == null:
 		return ""
-	var options := pool.songs_of_size(RogueCatalog.SIZE_KEYS[size])
+	var options := pool.songs_for_combo(combo) if size == RogueCatalog.Size.FINAL \
+		else pool.songs_of_size(RogueCatalog.SIZE_KEYS[size])
 	if options.is_empty():
 		return ""
 	var fresh: Array[Dictionary] = []
@@ -211,21 +216,36 @@ const _KIND_KEYS := {
 
 
 ## Rellena las 3 cajas: el tipo de cada una sale de su probabilidad en
-## RogueCatalog.SHOP_BOXES, y nunca se repite un objeto ni sale la mejora de
-## ranura que ya llevas.
+## RogueCatalog.SHOP_BOXES. Nunca se repite un objeto entre cajas, ni sale
+## nada que ya compraste en la partida. Si del tipo que toca no queda nada, la
+## caja prueba con los otros tipos que admite; si tampoco, queda vacia.
 func roll_offers() -> void:
 	var r := rng_for("shop:%d" % hash(offers))
 	offers.clear()
-	var taken := {slot_id: true}
+	# Tampoco la mejora que llevas en la ranura, aunque no la compraras aqui.
+	var taken := {item_key(RogueCatalog.ItemKind.SLOT, slot_id): true}
 	for box: Dictionary in RogueCatalog.SHOP_BOXES:
-		var kind := _roll_kind(r, box)
-		var ids: Array = []
-		for id in RogueCatalog.table(kind):
-			if not taken.has(id):
-				ids.append(id)
-		var id: String = ids[r.randi_range(0, ids.size() - 1)]
-		taken[id] = true
-		offers.append({"kind": kind, "id": id, "sold": false})
+		var kinds: Array[RogueCatalog.ItemKind] = [_roll_kind(r, box)]
+		for key in box:
+			if not _KIND_KEYS[key] in kinds:
+				kinds.append(_KIND_KEYS[key])
+		var offer := {"kind": kinds[0], "id": "", "sold": true}
+		for kind in kinds:
+			var ids: Array[String] = []
+			for id: String in RogueCatalog.table(kind):
+				var key := item_key(kind, id)
+				if not taken.has(key) and not purchased.has(key):
+					ids.append(id)
+			if not ids.is_empty():
+				var id := ids[r.randi_range(0, ids.size() - 1)]
+				taken[item_key(kind, id)] = true
+				offer = {"kind": kind, "id": id, "sold": false}
+				break
+		offers.append(offer)
+
+
+static func item_key(kind: RogueCatalog.ItemKind, id: String) -> String:
+	return "%d:%s" % [kind, id]
 
 
 static func _roll_kind(r: RandomNumberGenerator, box: Dictionary) -> RogueCatalog.ItemKind:
@@ -262,6 +282,7 @@ func buy(offer_index: int, lane: int = -1) -> String:
 
 	money -= cost
 	offer["sold"] = true
+	purchased[item_key(kind, id)] = true
 	match kind:
 		RogueCatalog.ItemKind.SLOT:
 			slot_id = id   # solo hay una ranura: sustituye a la anterior

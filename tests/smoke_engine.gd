@@ -26,7 +26,6 @@ func _ready() -> void:
 	_test_risk_and_shields()
 	_test_bis()
 	_test_boss_shield()
-	_test_key_rotation()
 	_test_erase_and_skip()
 	_test_steal_and_boo()
 	await _test_clock_tempo_and_seek()
@@ -229,20 +228,6 @@ func _test_boss_shield() -> void:
 	print("[escudo del jefe] bloquea, se rompe y se regenera")
 
 
-func _test_key_rotation() -> void:
-	var rules := PlayRules.new()
-	rules.key_rotation_every = 2
-	var pm := _pm(_chart([[0, 0], [100, 1]]), rules)
-	_check(pm.remap_lane(0) == 0, "sin rotar, cada tecla a su carril")
-	pm.judge_press(0, B)
-	pm.judge_press(1, B + 100)
-	_check(pm.key_shift == 1, "tras 2 notas las flechas rotan")
-	_check(pm.remap_lane(0) == 1 and pm.remap_lane(3) == 0, "la rotacion es circular")
-	_check(pm.remap_lane(Lanes.SPACE) == Lanes.SPACE, "el espacio no rota")
-	_done(pm)
-	print("[cambio de clave] rota las 4 flechas, no el espacio")
-
-
 func _test_erase_and_skip() -> void:
 	var pm := _pm(_chart([[0, 0], [1000, 0], [2000, 1], [3000, 1], [4000, 2], [4000, 3]]))
 	pm.judge_press(0, B)               # acierto
@@ -339,3 +324,21 @@ func _test_end_ms() -> void:
 	_check(pm.clock.get_time_ms() < 1500, "y no seguir hasta el final del audio (3 s)")
 	pm.queue_free()
 	print("[duracion] la partida acaba en end_ms")
+
+	# Sin end_ms (grabaciones de Juego Libre): acaba 1 s despues de la ultima
+	# nota, aunque el audio siga.
+	c = Chart.new()
+	c.add_note(200, 0, 300)   # larga: acaba a los 500
+	pm = PlaybackManager.new()
+	add_child(pm)
+	ended[0] = false
+	pm.song_ended.connect(func() -> void: ended[0] = true)
+	pm.start(_stream, c)
+	_check(is_equal_approx(pm.song_length_ms(), 500.0 + PlaybackManager.AFTER_LAST_NOTE_MS),
+		"sin end_ms, dura hasta la ultima nota + 1 s (%.0f)" % pm.song_length_ms())
+	deadline = Time.get_ticks_msec() + 3000
+	while not ended[0] and Time.get_ticks_msec() < deadline:
+		await get_tree().process_frame
+	_check(ended[0] and pm.clock.get_time_ms() < 2200, "la cancion acaba al terminar las notas")
+	pm.queue_free()
+	print("[duracion] sin end_ms, acaba tras la ultima nota")

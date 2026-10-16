@@ -13,6 +13,10 @@ const SIZE_NAMES := {
 	Size.FINAL: "Jefe",
 }
 
+## Habilidades que solo tienen sentido en el roguelike (dinero y ranura de
+## mejora): no se ofrecen en Juego Libre.
+const ROGUE_ONLY_ABILITIES: Array[String] = ["impuesto", "acoplamiento", "saqueador"]
+
 ## Jefes cuyas habilidades se ven desde el principio de la partida.
 const VISIBLE_SIZES: Array[Size] = [Size.SMALL, Size.MEDIUM]
 
@@ -27,10 +31,10 @@ const SIZE_KEYS := {
 ## duracion, notas totales, fallos permitidos (antes de la reduccion por ronda)
 ## y velocidad de caida de las notas.
 const SIZE_SPECS := {
-	Size.SMALL: {"duration_ms": 30000, "notes": 40, "misses": 15, "speed": "lenta"},
-	Size.MEDIUM: {"duration_ms": 60000, "notes": 60, "misses": 30, "speed": "media"},    # 60 por minuto
-	Size.BIG: {"duration_ms": 120000, "notes": 180, "misses": 50, "speed": "rapida"},    # 90 por minuto
-	Size.FINAL: {"duration_ms": 120000, "notes": 240, "misses": 40, "speed": "rapida"},  # 120 por minuto
+	Size.SMALL: {"duration_ms": 30000, "notes": 40, "misses": 5, "speed": "lenta"},
+	Size.MEDIUM: {"duration_ms": 60000, "notes": 60, "misses": 20, "speed": "media"},    # 60 por minuto
+	Size.BIG: {"duration_ms": 120000, "notes": 180, "misses": 35, "speed": "rapida"},    # 90 por minuto
+	Size.FINAL: {"duration_ms": 120000, "notes": 270, "misses": 30, "speed": "rapida"},  # 135 por minuto
 }
 
 ## Velocidad de caida: cuanto tarda una nota en cruzar la pantalla. En el
@@ -86,13 +90,13 @@ static func combo_name(id: String) -> String:
 ## Reglas del modo, una por linea (portada del roguelike y Ajustes > Informacion).
 static func rules_lines() -> Array[String]:
 	return [
-		Lang.t("10 canciones seguidas: Pequeña, Mediana y Grande tres veces, y el Jefe."),
+		Lang.t("5 canciones seguidas: Pequeña, Mediana, Mediana, Grande y el Jefe."),
 		"",
 		Lang.t("• Pequeño: %s.") % size_summary(Size.SMALL),
 		Lang.t("• Mediano: %s.") % size_summary(Size.MEDIUM),
 		Lang.t("• Grande: %s.") % size_summary(Size.BIG),
 		Lang.t("• Jefe: %s.") % size_summary(Size.FINAL),
-		Lang.t("• Cada canción tiene una puntuación que alcanzar y un límite de fallos, que baja a cada vuelta."),
+		Lang.t("• Cada canción tiene una puntuación que alcanzar y un límite de fallos."),
 		Lang.t("• Si fallas de más o no llegas a la puntuación, la partida vuelve a empezar desde cero."),
 		Lang.t("• Al pasar una canción ganas dinero según los fallos que te sobraron, y entras a la venta de garaje."),
 		Lang.t("• Tienes 1 ranura de mejora: se activa con Intro o Shift izquierdo, una vez por canción."),
@@ -103,19 +107,8 @@ static func rules_lines() -> Array[String]:
 static func travel_ms(size: Size) -> int:
 	return SPEED_TRAVEL_MS[SIZE_SPECS[size]["speed"]]
 
-## Las 10 canciones: Pequena -> Mediana -> Grande, tres veces, y la ultima es
-## el Jefe.
-const SEQUENCE: Array[Size] = [
-	Size.SMALL, Size.MEDIUM, Size.BIG,
-	Size.SMALL, Size.MEDIUM, Size.BIG,
-	Size.SMALL, Size.MEDIUM, Size.BIG,
-	Size.FINAL,
-]
-
-## "Cada vez hay que fallar menos": el limite de cada tamano se multiplica por
-## esto segun la vuelta (canciones 1-3, 4-6, 7-9). El Jefe sale una sola vez y
-## usa su limite tal cual.
-const ROUND_MISS_FACTOR: Array[float] = [1.0, 0.8, 0.65]
+## Las 5 canciones de una partida: Pequeno, Mediano, Mediano, Grande y el Jefe.
+const SEQUENCE: Array[Size] = [Size.SMALL, Size.MEDIUM, Size.MEDIUM, Size.BIG, Size.FINAL]
 
 ## Puntuacion a alcanzar, como fraccion de la maxima sin combo (notas x 350).
 const TARGET_FIRST := 0.40
@@ -166,7 +159,7 @@ const SLOT := {
 		"desc": "Durante un 10%, los acordes (notas a la vez) se quedan en una sola nota."},
 	"bis": {"name": "Bis", "price": 8, "image": "Bis.png", "passive": true,
 		"desc": "Si superas el límite de fallos, sobrevives una vez justo en el límite. Se activa solo."},
-	"beat_drop": {"name": "Beat Drop", "price": 8, "seconds": 15.0, "skip_seconds": 5.0,
+	"beat_drop": {"name": "Beat Drop", "price": 8, "image": "Beat Drop.png", "seconds": 15.0, "skip_seconds": 5.0,
 		"penalty_span": 0.10, "scroll": 1.5,
 		"desc": "15 s en los que cualquier tecla es Perfecto; luego salta 5 s de canción. A cambio, después las notas van x1.5 durante un 10%."},
 }
@@ -196,19 +189,19 @@ const ARROW := {
 # ---------------------------------------------------------------- Consumibles
 ## Se compran y afectan a la siguiente cancion (salvo Setlist, que es al momento).
 const CONSUMABLE := {
-	"setlist": {"name": "Setlist", "price": 2, "potion": 159,
+	"setlist": {"name": "Setlist", "price": 2, "image": "Setlist.png",
 		"desc": "Revela el jefe de la siguiente canción y renueva la tienda una vez."},
-	"cascos_rotos": {"name": "Cascos Rotos", "price": 4, "potion": 107,
+	"cascos_rotos": {"name": "Cascos Rotos", "price": 4, "image": "Cascos Rotos.png",
 		"desc": "Se desactivan 2 flechas al azar durante 1 canción. Sus notas desaparecen: no te perjudica."},
-	"ensayo": {"name": "Ensayo", "price": 3, "potion": 237, "seconds": 15.0,
+	"ensayo": {"name": "Ensayo", "price": 3, "image": "Ensayo.png", "seconds": 15.0,
 		"desc": "Juegas sin riesgo los primeros 15 s de la siguiente canción."},
-	"grabadora": {"name": "Grabadora", "price": 4, "potion": 211,
+	"grabadora": {"name": "Grabadora", "price": 4, "image": "Grabadora.png",
 		"desc": "Tu mejora de ranura tiene 2 usos en la siguiente canción."},
-	"soborno": {"name": "Soborno al Técnico", "price": 5, "potion": 81,
+	"soborno": {"name": "Soborno al Técnico", "price": 5, "image": "Soborno al Tecnico.png",
 		"desc": "Desactiva una habilidad del siguiente jefe."},
-	"contrato": {"name": "Contrato Discográfico", "price": 3, "potion": 185, "money_mult": 2.0, "misses": -5,
+	"contrato": {"name": "Contrato Discográfico", "price": 3, "image": "Contrato Discografico.png", "money_mult": 2.0, "misses": -5,
 		"desc": "x2 de dinero en la siguiente canción, pero -5 al límite de fallos."},
-	"cuerdas": {"name": "Juego de Cuerdas Nuevas", "price": 3, "potion": 29, "misses": 3,
+	"cuerdas": {"name": "Juego de Cuerdas Nuevas", "price": 3, "image": "Juego de Cuerdas Nuevo.png", "misses": 3,
 		"desc": "+3 al límite de fallos en la siguiente canción."},
 }
 
@@ -255,14 +248,16 @@ const ABILITY := {
 		"desc": "Una flecha pasa a tener solo señuelos durante un tramo."},
 	"fantasma": {"name": "Notas Fantasma", "size": Size.BIG,
 		"desc": "Las notas desaparecen justo antes de llegar a la línea."},
-	"cambio_clave": {"name": "Cambio de Clave", "size": Size.BIG, "every": 125,
-		"desc": "Rota la asignación de las 4 flechas cada 125 notas."},
 	"polirritmia": {"name": "Polirritmia", "size": Size.BIG,
 		"desc": "Un carril sigue tresillos mientras los demás van en negras o corcheas."},
 	"pegajosas": {"name": "Notas Pegajosas", "size": Size.BIG,
 		"desc": "En un tramo aparecen muchas notas largas que hay que mantener mientras tocas otras."},
 	"maldicion": {"name": "Maldición", "size": Size.BIG,
 		"desc": "Convierte una de tus flechas en Maldita durante esta canción."},
+	"teclas_mezcladas": {"name": "Teclas Mezcladas", "size": Size.BIG,
+		"desc": "En un tramo de la canción las flechas caen por cualquier carril: pulsa la tecla de la flecha, no la del carril por el que cae."},
+	"rasgueo": {"name": "Rasgueo", "size": Size.BIG, "min_ms": 450, "gap_ms": 120,
+		"desc": "Las notas largas se parten en 2 o 3 trozos con un pequeño hueco entre ellos."},
 }
 
 ## Jefe final: una combinacion fija de habilidades.
@@ -270,10 +265,10 @@ const FINAL_COMBOS := {
 	"techno": {"name": "Techno", "abilities": ["carril_minado", "cuerda_rota", "ventana_estrecha"]},
 	"mainstream": {"name": "Mainstream", "abilities": ["saqueador", "abucheo", "pegajosas"]},
 	"metal": {"name": "Metal", "abilities": ["maldicion", "fantasma", "doble_golpe"]},
-	"rap": {"name": "Rap", "abilities": ["ventana_estrecha", "cambio_clave", "silencio"]},
-	"rock": {"name": "Rock", "abilities": ["polirritmia", "pista_invertida"]},
+	"rap": {"name": "Rap", "abilities": ["ventana_estrecha", "teclas_mezcladas", "silencio"]},
+	"rock": {"name": "Rock", "abilities": ["polirritmia", "pista_invertida", "teclas_mezcladas"]},
 	"salsa": {"name": "Salsa", "abilities": ["acoplamiento", "zoom", "crescendo", "doble_golpe"]},
-	"experimental": {"name": "Experimental", "abilities": ["cambio_clave", "polirritmia"]},
+	"experimental": {"name": "Experimental", "abilities": ["polirritmia", "teclas_mezcladas"]},
 }
 
 enum ItemKind { SLOT, ARROW, CONSUMABLE }
@@ -311,12 +306,10 @@ static func ability_name(id: String) -> String:
 	return Lang.t(ABILITY[id]["name"]) if ABILITY.has(id) else id
 
 
-## Fallos permitidos en la cancion `index` (0..9), antes de consumibles.
+## Fallos permitidos en la cancion `index`, antes de consumibles: los de su
+## tamano.
 static func miss_limit(index: int) -> int:
-	var size: Size = SEQUENCE[index]
-	if size == Size.FINAL:
-		return int(SIZE_SPECS[size]["misses"])
-	return maxi(1, roundi(SIZE_SPECS[size]["misses"] * ROUND_MISS_FACTOR[index / 3]))
+	return int(SIZE_SPECS[SEQUENCE[index]]["misses"])
 
 
 ## Puntuacion objetivo de la cancion `index` con `notes` notas reales.

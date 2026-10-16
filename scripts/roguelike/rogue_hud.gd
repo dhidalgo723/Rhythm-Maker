@@ -19,6 +19,7 @@ const EFFECT_NAMES := {
 	TimedEffect.SILENCE: "Silencio",
 	TimedEffect.SCROLL: "Velocidad",
 	TimedEffect.INVERT: "Inversión",
+	TimedEffect.SHUFFLE_NOTES: "Teclas Mezcladas",
 	TimedEffect.REVERSE: "Pista Invertida",
 }
 

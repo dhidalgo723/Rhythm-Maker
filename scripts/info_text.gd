@@ -69,7 +69,7 @@ static func _scoring() -> String:
 	lines.append("")
 	lines.append(Lang.t("• Cada acierto suma hasta %d puntos extra según el combo.") % Judgement.COMBO_BONUS_CAP)
 	lines.append(Lang.t("• Debajo del juicio se avisa si tocaste pronto o tarde."))
-	lines.append(Lang.t("• En el Modo Juego pierdes al superar %d fallos.") % Judgement.MAX_MISSES)
+	lines.append(Lang.t("• En Juego Libre no hay límite de fallos: solo se cuentan."))
 	lines.append(Lang.t("• Las notas largas hay que mantenerlas pulsadas hasta el final."))
 	return "\n".join(lines)
 

@@ -9,6 +9,9 @@ var duration_ms := 0
 var decoy := false
 ## Pulsaciones necesarias (2 = "Doble Golpe"). Solo la crean los jefes.
 var hits := 1
+## Teclas Mezcladas: columna por la que cae la nota (-1 = la de su carril). Se
+## sigue tocando con la tecla de su carril. Solo la ponen los jefes.
+var show_lane := -1
 
 
 func _init(t_ms: int = 0, note_lane: int = 0, dur_ms: int = 0) -> void:
@@ -29,6 +32,7 @@ func copy() -> ChartNote:
 	var n := ChartNote.new(timestamp_ms, lane, duration_ms)
 	n.decoy = decoy
 	n.hits = hits
+	n.show_lane = show_lane
 	return n
 
 

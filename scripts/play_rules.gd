@@ -7,7 +7,9 @@ extends RefCounted
 ## PlaybackManager las consulta al juzgar; PlayField, al dibujar. Asi ninguno de
 ## los dos tiene que saber nada de jefes ni de tiendas.
 
-var miss_limit := Judgement.MAX_MISSES
+## Fallos permitidos: al superarlos se pierde. 0 = sin limite (Juego Libre: solo
+## se cuentan); el roguelike pone el del jefe.
+var miss_limit := 0
 ## Tiempo que tarda una nota en cruzar la pantalla. 0 = el de los Ajustes del
 ## jugador; el roguelike lo fija segun el tamano del jefe.
 var travel_time_ms := 0
@@ -32,7 +34,6 @@ var bis := false                              ## Bis: sobrevives una vez al limi
 # --- Jefes ---
 var boss_shield_perfects := 0                 ## Escudo del Jefe: perfectos seguidos para romperlo
 var boss_shield_regen_ms := 20000.0
-var key_rotation_every := 0                   ## Cambio de Clave: cada cuantas notas rota
 var steal_after_misses := 0                   ## Saqueador: fallos seguidos para robar
 var scroll_per_miss := 0.0                    ## Abucheo: velocidad extra por fallo
 var crescendo_to := 1.0                       ## Crescendo: velocidad al final de la cancion

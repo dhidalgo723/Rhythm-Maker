@@ -3,19 +3,17 @@ extends RefCounted
 
 ## Imagenes de los objetos de la tienda.
 ##
-##   - Mejoras de ranura: la imagen de roguelike/upgrades (campo "image" del
-##     catalogo). Sin imagen, una tecla de espacio dorada de reserva.
+##   - Mejoras de ranura y consumibles: su imagen de roguelike/upgrades o
+##     roguelike/consumables (campo "image" del catalogo). Sin imagen, una
+##     tecla de espacio dorada de reserva.
 ##   - Mejoras de flecha: la tecla de flecha teñida con el color de la mejora.
-##   - Consumibles: un frasco del atlas GUI, de un color por consumible.
 ##
 ## Cada imagen se recorta a su silueta, se escala para caber en `max_px` y se
 ## le deja un margen transparente para que el contorno (outline.gdshader) no se
 ## corte en los bordes.
 
 const UPGRADES_DIR := "res://roguelike/upgrades"
-## Fila de frascos del atlas GUI; el campo "potion" del catalogo es la x.
-const POTION_Y := 795
-const POTION_SIZE := Vector2i(21, 33)
+const CONSUMABLES_DIR := "res://roguelike/consumables"
 ## Margen transparente alrededor, en px: lo que ocupa el contorno.
 const OUTLINE_PX := 4
 const OUTLINE_SHADER := preload("res://scripts/roguelike/outline.gdshader")
@@ -79,30 +77,27 @@ static func set_selected(rect: TextureRect, selected: bool) -> void:
 		mat.set_shader_parameter("outline_color", OUTLINE_SELECTED if selected else OUTLINE_IDLE)
 
 
-## Hay imagen propia para esta mejora de ranura?
-static func has_image(id: String) -> bool:
-	var file: String = RogueCatalog.SLOT.get(id, {}).get("image", "")
-	return file != "" and ResourceLoader.exists(UPGRADES_DIR.path_join(file))
+## Ruta de la imagen propia del objeto, o "" si no tiene (o falta el archivo).
+static func image_path(kind: RogueCatalog.ItemKind, id: String) -> String:
+	var file: String = RogueCatalog.item(kind, id).get("image", "")
+	if file == "":
+		return ""
+	var dir := CONSUMABLES_DIR if kind == RogueCatalog.ItemKind.CONSUMABLE else UPGRADES_DIR
+	var path := dir.path_join(file)
+	return path if ResourceLoader.exists(path) else ""
 
 
 ## {image: Image RGBA8, pixel_art: bool}, o {} si no hay de donde sacarla.
 static func _source(kind: RogueCatalog.ItemKind, id: String) -> Dictionary:
-	var data := RogueCatalog.item(kind, id)
-	match kind:
-		RogueCatalog.ItemKind.SLOT:
-			if has_image(id):
-				var tex: Texture2D = load(UPGRADES_DIR.path_join(data["image"]))
-				return {"image": _rgba(tex.get_image()), "pixel_art": false}
-			# Sin imagen (de momento Beat Drop): tecla de espacio dorada.
-			return _key_image(Lanes.SPACE, Color("ffd23f"))
-		RogueCatalog.ItemKind.ARROW:
-			return _key_image(2, Color(str(data.get("color", "ffffff"))))
-		_:
-			if not GuiTheme.available():
-				return {}
-			var atlas := GuiTheme._atlas_image()
-			var region := Rect2i(Vector2i(int(data.get("potion", 159)), POTION_Y), POTION_SIZE)
-			return {"image": atlas.get_region(region), "pixel_art": true}
+	if kind == RogueCatalog.ItemKind.ARROW:
+		var data := RogueCatalog.item(kind, id)
+		return _key_image(2, Color(str(data.get("color", "ffffff"))))
+	var path := image_path(kind, id)
+	if path != "":
+		var tex: Texture2D = load(path)
+		return {"image": _rgba(tex.get_image()), "pixel_art": false}
+	# Sin imagen: tecla de espacio dorada de reserva.
+	return _key_image(Lanes.SPACE, Color("ffd23f"))
 
 
 ## Tecla del atlas de teclas, teñida.

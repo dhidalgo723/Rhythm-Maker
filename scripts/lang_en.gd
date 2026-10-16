@@ -34,7 +34,7 @@ const TEXT := {
 	# --- Menu principal ---
 	"Graba tu propio chart y juégalo": "Record your own chart and play it",
 	"MODO EDICIÓN": "EDIT MODE",
-	"MODO JUEGO": "PLAY MODE",
+	"JUEGO LIBRE": "FREE PLAY",
 	"AJUSTES": "SETTINGS",
 	"SALIR": "QUIT",
 	"%d grabaciones   -   teclas %s   -   W/S o flechas para moverte, Intro para elegir":
@@ -70,9 +70,19 @@ const TEXT := {
 	"Las notas aparecen %.1f s antes (más = las ves antes)": "Notes appear %.1f s early (more = you see them sooner)",
 	"  %s          %d notas   -   %d:%02d": "  %s          %d notes   -   %d:%02d",
 	"Borrar esta grabación": "Delete this recording",
+	"¿Cómo quieres jugar %s?": "How do you want to play %s?",
+	"SIN HABILIDADES": "NO ABILITIES",
+	"CON HABILIDADES": "WITH ABILITIES",
+	"ELIGE LAS HABILIDADES": "PICK THE ABILITIES",
+	"Intro para marcar o desmarcar. Puedes poner tantas como quieras.": "Enter to tick or untick. Add as many as you like.",
+	"Pequeñas": "Small",
+	"Medianas": "Medium",
+	"Grandes": "Big",
+	"JUGAR (%d)": "PLAY (%d)",
+	"Quitar todas": "Clear all",
 
 	# --- Partida ---
-	"Fallos 0/%d": "Misses 0/%d",
+	"Fallos: %d": "Misses: %d",
 	"Fallos %d/%d": "Misses %d/%d",
 	"%s   -   Esc para pausar": "%s   -   Esc to pause",
 	"Continuar": "Continue",
@@ -104,7 +114,8 @@ const TEXT := {
 	"¡Escudo del jefe roto!": "Boss shield broken!",
 	"¡Escudo!": "Shield!",
 	"¡Bis!": "Encore!",
-	"¡Cambio de clave!": "Key change!",
+	"¡Teclas mezcladas!": "Keys shuffled!",
+	"Las flechas vuelven a su carril": "The arrows are back in their lanes",
 	"El escudo del jefe se regenera": "The boss shield regenerates",
 
 	# --- Calibracion ---
@@ -166,21 +177,21 @@ const TEXT := {
 	"Cuanto más cerca del momento justo toques, más puntos:": "The closer to the exact moment you tap, the more points:",
 	"• Cada acierto suma hasta %d puntos extra según el combo.": "• Each hit adds up to %d extra points depending on your combo.",
 	"• Debajo del juicio se avisa si tocaste pronto o tarde.": "• Under the rating you're told whether you tapped early or late.",
-	"• En el Modo Juego pierdes al superar %d fallos.": "• In Play Mode you lose after more than %d misses.",
+	"• En Juego Libre no hay límite de fallos: solo se cuentan.": "• Free Play has no miss limit: misses are just counted.",
 	"• Las notas largas hay que mantenerlas pulsadas hasta el final.": "• Long notes must be held down until the end.",
 	"Se ven desde el principio de la partida.": "Visible from the start of the run.",
 	"Ocultas hasta que empieza la canción (o con un Setlist).": "Hidden until the song starts (or with a Setlist).",
 	"El último jefe trae una de estas combinaciones de habilidades.": "The last boss brings one of these ability combos.",
 
 	# --- Roguelike: portada y mapa ---
-	"10 canciones seguidas: Pequeña, Mediana y Grande tres veces, y el Jefe.":
-		"10 songs in a row: Small, Medium and Big three times, then the Boss.",
+	"5 canciones seguidas: Pequeña, Mediana, Mediana, Grande y el Jefe.":
+		"5 songs in a row: Small, Medium, Medium, Big, then the Boss.",
 	"• Pequeño: %s.": "• Small: %s.",
 	"• Mediano: %s.": "• Medium: %s.",
 	"• Grande: %s.": "• Big: %s.",
 	"• Jefe: %s.": "• Boss: %s.",
-	"• Cada canción tiene una puntuación que alcanzar y un límite de fallos, que baja a cada vuelta.":
-		"• Each song has a target score and a miss limit, which gets lower every round.",
+	"• Cada canción tiene una puntuación que alcanzar y un límite de fallos.":
+		"• Each song has a target score and a miss limit.",
 	"• Si fallas de más o no llegas a la puntuación, la partida vuelve a empezar desde cero.":
 		"• If you miss too much or fall short of the score, the run starts over from scratch.",
 	"• Al pasar una canción ganas dinero según los fallos que te sobraron, y entras a la venta de garaje.":
@@ -190,7 +201,7 @@ const TEXT := {
 	"• Las habilidades de los jefes pequeños y medianos se ven desde el principio; las de los grandes y el Jefe, al empezar la canción.":
 		"• Small and medium boss abilities are visible from the start; big bosses and the Boss reveal theirs when the song starts.",
 	"%s, %d notas, %d fallos, velocidad %s": "%s, %d notes, %d misses, %s speed",
-	"¡Superaste los 10 jefes! Partida ganada.": "You beat all 10 bosses! Run won.",
+	"¡Superaste los %d jefes! Partida ganada.": "You beat all %d bosses! Run won.",
 	"Perdiste en la canción %d de %d.": "You lost on song %d of %d.",
 	"Faltan canciones de tamaño: %s (en roguelike/pool.json)": "Missing songs of size: %s (in roguelike/pool.json)",
 	"Nueva partida": "New run",
@@ -213,6 +224,7 @@ const TEXT := {
 	"Una canción de pool.json no tiene id": "A song in pool.json has no id",
 	"%s: size debe ser small, medium, big o boss (es \"%s\")": "%s: size must be small, medium, big or boss (it is \"%s\")",
 	"%s: no existe el chart %s": "%s: the chart %s does not exist",
+	"%s: combo debe ir en una canción boss y ser uno de %s": "%s: combo must be on a boss song and be one of %s",
 	"%s: el chart está vacío o roto": "%s: the chart is empty or broken",
 	"%s: no existe el audio %s": "%s: the audio %s does not exist",
 
@@ -247,9 +259,6 @@ const TEXT := {
 	"PARTIDA": "RUN",
 	"JEFES SUPERADOS": "BOSSES BEATEN",
 	"%d de %d": "%d of %d",
-	"VUELTA": "ROUND",
-	"Final": "Final",
-	"%d de %d  (fallos x%s)": "%d of %d  (misses x%s)",
 
 	# --- Roguelike: durante la cancion ---
 	"Canción %d de %d": "Song %d of %d",
@@ -297,6 +306,9 @@ const TEXT := {
 	"Ver la partida": "View the run",
 	"Monedas: %d": "Coins: %d",
 	"Comprado": "Bought",
+	"Agotado": "Sold out",
+	"Ya compraste todo lo que podía salir en esta caja.": "You already bought everything this box could offer.",
+	"Esta caja está vacía": "This box is empty",
 	"%d monedas — no te llega": "%d coins — not enough",
 	"%d monedas — Intro para comprar": "%d coins — Enter to buy",
 	"Venta de garaje": "Garage sale",
@@ -423,8 +435,6 @@ const TEXT := {
 	"Una flecha pasa a tener solo señuelos durante un tramo.": "One arrow gets only decoys for a stretch.",
 	"Notas Fantasma": "Ghost Notes",
 	"Las notas desaparecen justo antes de llegar a la línea.": "Notes vanish right before reaching the line.",
-	"Cambio de Clave": "Key Change",
-	"Rota la asignación de las 4 flechas cada 125 notas.": "Rotates the mapping of the 4 arrows every 125 notes.",
 	"Polirritmia": "Polyrhythm",
 	"Un carril sigue tresillos mientras los demás van en negras o corcheas.": "One lane follows triplets while the others play quarter or eighth notes.",
 	"Notas Pegajosas": "Sticky Notes",
@@ -432,6 +442,12 @@ const TEXT := {
 		"For a stretch, many long notes appear that you must hold while hitting others.",
 	"Maldición": "Curse",
 	"Convierte una de tus flechas en Maldita durante esta canción.": "Turns one of your arrows Cursed for this song.",
+	"Teclas Mezcladas": "Shuffled Keys",
+	"En un tramo de la canción las flechas caen por cualquier carril: pulsa la tecla de la flecha, no la del carril por el que cae.":
+		"For a stretch of the song arrows fall down any lane: press the arrow's key, not the key of the lane it falls in.",
+	"Rasgueo": "Strumming",
+	"Las notas largas se parten en 2 o 3 trozos con un pequeño hueco entre ellos.":
+		"Long notes are split into 2 or 3 pieces with a small gap between them.",
 
 	# --- Combinaciones del jefe final ---
 	"Techno": "Techno",

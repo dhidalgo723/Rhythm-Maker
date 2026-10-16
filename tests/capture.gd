@@ -1,6 +1,6 @@
 extends Node
 
-## Arranca el modo juego con un bot y guarda capturas del playfield.
+## Arranca Juego Libre con un bot y guarda capturas del playfield.
 ## Correr: godot --path . --disable-vsync res://tests/capture.tscn
 ## (con VSync, una ventana lanzada en segundo plano puede quedar a ~6 FPS y el
 ## bot, que solo pulsa una vez por frame, llega tarde a todas las notas)

@@ -37,6 +37,8 @@ var _prepared: RoguePrepared
 var _rogue: RogueRuntime
 var _rogue_hud: RogueHud
 var _length_ms := 1.0
+## Juego Libre con habilidades: avisos de las habilidades (que carril...).
+var _free_notices: Array[String] = []
 var _judge_timer := 0.0
 var _countdown_left := COUNTDOWN_S
 var _started := false
@@ -68,6 +70,8 @@ func _ready() -> void:
 			return
 		_chart = _entry.chart
 		_length_ms = maxf(_stream.get_length() * 1000.0, 1.0)
+		if not Session.free_abilities.is_empty():
+			_apply_free_abilities()
 
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	_build_ui()
@@ -102,6 +106,60 @@ func _ready() -> void:
 			_rogue_hud.show_notice(text)
 	else:
 		_pm.message.connect(_show_message)
+		if not Session.free_abilities.is_empty():
+			_build_free_abilities_column()
+
+
+## Juego Libre con habilidades: se aplican igual que en el roguelike, sobre una
+## copia del chart (la grabacion guardada no cambia). Cada intento las tira de
+## nuevo: los tramos y carriles al azar cambian al reintentar.
+func _apply_free_abilities() -> void:
+	var p := RoguePrepared.new()
+	p.chart = _entry.chart.duplicate_chart()
+	p.rules = PlayRules.new()
+	var last := 0
+	for n in p.chart.notes:
+		last = maxi(last, n.end_ms())
+	var end := float(p.chart.end_ms) if p.chart.end_ms > 0 else last + PlaybackManager.AFTER_LAST_NOTE_MS
+	p.length_ms = minf(_length_ms, end)
+	var r := RandomNumberGenerator.new()
+	r.randomize()
+	RogueBuilder.apply_abilities(Session.free_abilities, p, r)
+	_chart = p.chart
+	_rules = p.rules
+	_free_notices = p.notices
+
+
+## A la derecha de los carriles, las habilidades puestas y sus avisos.
+func _build_free_abilities_column() -> void:
+	var col := VBoxContainer.new()
+	col.set_anchors_preset(Control.PRESET_RIGHT_WIDE)
+	col.offset_left = -SIDE_COLUMN_W
+	col.offset_right = -8
+	col.offset_top = 84
+	col.offset_bottom = -40
+	col.add_theme_constant_override("separation", 4)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(col)
+	move_child(col, _field.get_index() + 1)
+	var lines: Array[String] = []
+	for id in Session.free_abilities:
+		lines.append("• " + RogueCatalog.ability_name(id))
+	var title := _mk_label(Lang.t("HABILIDADES"), 15)
+	title.add_theme_color_override("font_color", Color("ff9f43"))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	col.add_child(title)
+	var list := _mk_label("\n".join(lines), 13)
+	list.add_theme_color_override("font_color", Color("ff9f43"))
+	list.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	list.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(list)
+	if not _free_notices.is_empty():
+		var notes := _mk_label("\n".join(_free_notices), 12)
+		notes.add_theme_color_override("font_color", GuiTheme.TEXT_DIM)
+		notes.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		notes.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		col.add_child(notes)
 
 
 func _build_ui() -> void:
@@ -143,7 +201,9 @@ func _build_ui() -> void:
 	spacer2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(spacer2)
 
-	_hud_misses = _mk_label(Lang.t("Fallos 0/%d") % Judgement.MAX_MISSES, 22)
+	_hud_misses = _mk_label("", 22)
+	var limit := _rules.miss_limit if _rules != null else 0
+	_hud_misses.text = Lang.t("Fallos %d/%d") % [0, limit] if limit > 0 else Lang.t("Fallos: %d") % 0
 	row.add_child(_hud_misses)
 
 	_progress = ProgressBar.new()
@@ -345,6 +405,10 @@ func _on_score_changed(score: int, combo: int, misses: int) -> void:
 	_hud_score.text = str(score)
 	_hud_combo.text = "%d" % combo if combo >= 3 else ""
 	var limit := _pm.rules.miss_limit
+	if limit <= 0:
+		# Juego Libre: sin limite, solo se cuentan.
+		_hud_misses.text = Lang.t("Fallos: %d") % misses
+		return
 	_hud_misses.text = Lang.t("Fallos %d/%d") % [misses, limit]
 	var danger := float(misses) / float(maxi(1, limit))
 	_hud_misses.add_theme_color_override("font_color",

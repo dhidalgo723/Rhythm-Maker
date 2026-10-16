@@ -37,9 +37,6 @@ const ACCURACY := {
 ## Bonus maximo por combo que se suma a cada acierto.
 const COMBO_BONUS_CAP := 50
 
-## Fallos permitidos. Al superarlo, se pierde.
-const MAX_MISSES := 15
-
 const NAMES := {
 	Kind.PERFECT: "Perfecto",
 	Kind.GOOD: "Bueno",

@@ -59,6 +59,7 @@ func _ready() -> void:
 	run.current_boss().abilities.assign(["pegajosas", "camufladas"])
 	await _play_reverse(run)
 	await _note_kinds()
+	await _shuffled_columns()
 
 	get_tree().quit(0)
 
@@ -82,6 +83,30 @@ func _note_kinds() -> void:
 	add_child(scene)
 	await _wait(3.6)
 	await _shoot("rogue_8_tipos_de_nota")
+	scene._pm.stop()
+	scene.queue_free()
+	await _wait(0.2)
+
+
+## Teclas Mezcladas: cada flecha cae por otra columna, con su propio icono.
+func _shuffled_columns() -> void:
+	Session.rogue_prepared = null
+	var e := SongEntry.new()
+	e.slug = "mezcladas"
+	e.dir = ProjectSettings.globalize_path("res://tests")
+	e.chart = Chart.new()
+	e.chart.title = "Teclas Mezcladas"
+	e.chart.song_path = "test_tone.wav"
+	var columns := {0: Lanes.SPACE, 1: 3, Lanes.SPACE: 0, 2: 1, 3: 2}
+	var t := 1500
+	for lane in [0, 1, Lanes.SPACE, 2, 3]:
+		e.chart.add_note(t, lane).show_lane = columns[lane]
+		t += 150
+	Session.selected_song = e
+	var scene: Control = load("res://scenes/play_scene.tscn").instantiate()
+	add_child(scene)
+	await _wait(3.6)
+	await _shoot("rogue_8b_columnas_mezcladas")
 	scene._pm.stop()
 	scene.queue_free()
 	await _wait(0.2)
@@ -121,6 +146,14 @@ func _play_reverse(run: RogueRun) -> void:
 	scene._pm.add_effect(TimedEffect.INVERT, 0.0, 999999.0)
 	await _bot(scene, 3.4)   # la mediana tiene un hueco entre 1,6 s y 4,0 s
 	await _shoot("rogue_7_invertida_camufladas")
+	# Teclas Mezcladas: bajo cada receptor, la tecla que ahora lo activa.
+	# Sin camufladas ni pista invertida, para que se vea cada flecha en otra columna.
+	scene._pm.rules.camouflage = false
+	scene._pm.rules.effects.clear()
+	scene._pm.add_effect(TimedEffect.SHUFFLE_NOTES, 0.0, 999999.0)
+	ChartTransforms.shuffle_columns(scene._pm.chart, 0.0, 999999.0, RandomNumberGenerator.new(), [])
+	await _bot(scene, 1.2)
+	await _shoot("rogue_7b_teclas_mezcladas")
 	scene._pm.stop()
 	Session.rogue_prepared = null
 	scene.queue_free()

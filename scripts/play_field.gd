@@ -174,9 +174,6 @@ func _draw() -> void:
 	if not _playing():
 		return
 
-	if manager.key_shift != 0:
-		_draw_key_labels(rec_y, reversed, t)
-
 	var base_travel := manager.rules.travel_time_ms if manager.rules.travel_time_ms > 0 \
 		else Settings.travel_time_ms
 	var travel := float(base_travel) / maxf(_scroll, 0.05)
@@ -201,6 +198,9 @@ func _draw() -> void:
 func _draw_note(pn: PlayNote, progress: float, rec_y: float, travel_px: float,
 		travel: float, t: float) -> void:
 	var lane := pn.lane
+	# Teclas Mezcladas: cae por otra columna, pero con el icono y el color de
+	# su carril, que es la tecla que hay que pulsar.
+	var column := pn.note.show_lane if pn.note.show_lane >= 0 else lane
 	var rules := _rules()
 	var y := rec_y + progress * travel_px
 	var alpha := clampf((1.0 - progress) / FADE_IN_PORTION, 0.0, 1.0)
@@ -217,12 +217,12 @@ func _draw_note(pn: PlayNote, progress: float, rec_y: float, travel_px: float,
 	if pn.note.is_hold():
 		var end_progress := (float(pn.note.end_ms()) - t) / travel
 		var end_y := rec_y + clampf(end_progress, 0.0, 1.0) * travel_px
-		var x := _wave_x(lane, y, t)
+		var x := _wave_x(column, y, t)
 		var top := minf(y, end_y)
 		var tail := Color(Lanes.COLORS[lane], 0.55 * alpha)
 		draw_rect(Rect2(x - HOLD_TAIL_W * 0.5, top, HOLD_TAIL_W, absf(end_y - y)), tail)
 
-	var center := Vector2(_wave_x(lane, y, t), y)
+	var center := Vector2(_wave_x(column, y, t), y)
 	if rules.camouflage and not pn.note.decoy:
 		_draw_plain_key(center, alpha)
 		return
@@ -230,20 +230,6 @@ func _draw_note(pn: PlayNote, progress: float, rec_y: float, travel_px: float,
 	var variant := KeyIcons.Variant.OUTLINE if pn.note.hits > 1 and pn.hits_done == 0 \
 		else KeyIcons.Variant.NORMAL
 	_draw_key(center, lane, variant, true, color)
-
-
-## Cambio de Clave: bajo cada receptor, la tecla que ahora lo activa.
-func _draw_key_labels(rec_y: float, reversed: bool, t: float) -> void:
-	var font := get_theme_default_font()
-	var dirs := Settings.DIRECTION_LANES
-	for lane in dirs:
-		# La tecla K activa el carril remap(K): buscamos la K que cae en este.
-		var key_lane := dirs[(dirs.find(lane) - manager.key_shift + dirs.size()) % dirs.size()]
-		var text := Lanes.key_label(key_lane)
-		var y := rec_y + (-CELL_PX * 0.55 if reversed else CELL_PX * 0.62)
-		var x := _wave_x(lane, rec_y, t)
-		draw_string_outline(font, Vector2(x - 60, y), text, HORIZONTAL_ALIGNMENT_CENTER, 120, 18, 6, GuiTheme.OUTLINE)
-		draw_string(font, Vector2(x - 60, y), text, HORIZONTAL_ALIGNMENT_CENTER, 120, 18, GuiTheme.TEXT_FOCUS)
 
 
 func _disabled(lane: int) -> bool:

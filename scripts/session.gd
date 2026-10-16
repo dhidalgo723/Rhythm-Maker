@@ -8,8 +8,11 @@ var audio_stream: AudioStream = null
 ## Titulo con el que se guardara la grabacion.
 var recording_title := ""
 
-# --- Modo juego: grabacion elegida de la biblioteca ---
+# --- Juego Libre: grabacion elegida de la biblioteca ---
 var selected_song: SongEntry = null
+## Habilidades de jefe que el jugador ha puesto a la cancion (vacio = ninguna).
+## Se quedan para Reintentar y como seleccion inicial la proxima vez.
+var free_abilities: Array[String] = []
 
 # --- Modo roguelike ---
 ## Partida en curso (null si no hay ninguna).

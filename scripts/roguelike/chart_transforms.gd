@@ -157,6 +157,63 @@ static func sticky_notes(chart: Chart, from_ms: float, to_ms: float) -> int:
 	return lane
 
 
+## Rasgueo: cada nota larga de al menos `min_ms` se parte en 2 o 3 trozos
+## seguidos, con `gap_ms` de hueco entre uno y otro. Devuelve cuantas se partieron.
+static func strum(chart: Chart, rng: RandomNumberGenerator, min_ms: int, gap_ms: int) -> int:
+	var out: Array[ChartNote] = []
+	var split := 0
+	for n in chart.notes:
+		if n.decoy or n.duration_ms < min_ms:
+			out.append(n)
+			continue
+		# Cada trozo, al menos tan largo como el hueco: si no caben 3, van 2.
+		var pieces := rng.randi_range(2, 3)
+		if n.duration_ms < pieces * gap_ms + (pieces - 1) * gap_ms:
+			pieces = 2
+		var piece := (n.duration_ms - gap_ms * (pieces - 1)) / pieces
+		for i in pieces:
+			var part := n.copy()
+			part.timestamp_ms = n.timestamp_ms + i * (piece + gap_ms)
+			part.duration_ms = piece
+			part.hits = 1
+			out.append(part)
+		split += 1
+	chart.notes = out
+	chart.sort_notes()
+	return split
+
+
+## Teclas Mezcladas: en el tramo, cada nota cae por otra columna (se sigue
+## tocando con la tecla de su carril). Las que caen a la vez van por columnas
+## distintas, y nunca por una ocupada aun por una nota larga, para que no se
+## monten. Devuelve cuantas cambiaron de columna.
+static func shuffle_columns(chart: Chart, from_ms: float, to_ms: float, rng: RandomNumberGenerator,
+		avoid: Array[int]) -> int:
+	var columns: Array[int] = []
+	for lane in Lanes.DISPLAY_ORDER:
+		if not lane in avoid:
+			columns.append(lane)
+	var busy_until := {}   # columna -> ms en que acaba la larga que cae por ella
+	var used_at := {}      # columna -> instante de la ultima nota que cayo por ella
+	var moved := 0
+	for n in chart.notes:
+		if n.timestamp_ms < from_ms or n.timestamp_ms >= to_ms:
+			continue
+		var free: Array[int] = []
+		for c in columns:
+			var taken_now: bool = used_at.has(c) and absi(int(used_at[c]) - n.timestamp_ms) <= SAME_TIME_MS
+			if c != n.lane and not taken_now and int(busy_until.get(c, -1)) < n.timestamp_ms:
+				free.append(c)
+		if free.is_empty():
+			continue
+		var c := free[rng.randi_range(0, free.size() - 1)]
+		n.show_lane = c
+		used_at[c] = n.timestamp_ms
+		busy_until[c] = n.end_ms() + STICKY_GAP_MS if n.is_hold() else -1
+		moved += 1
+	return moved
+
+
 ## Carril Minado: en el tramo, todas las notas de un carril pasan a senuelos.
 static func minefield(chart: Chart, from_ms: float, to_ms: float) -> int:
 	var lane := busiest_lane(chart, from_ms, to_ms)

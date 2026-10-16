@@ -100,7 +100,8 @@ func _title() -> Control:
 
 func _build_intro(root: VBoxContainer, finished: RogueRun) -> void:
 	if finished != null and finished.state == RogueRun.State.WON:
-		root.add_child(_label(Lang.t("¡Superaste los 10 jefes! Partida ganada."), 20, GREEN, 3, true))
+		root.add_child(_label(Lang.t("¡Superaste los %d jefes! Partida ganada.") % finished.songs_total(),
+			20, GREEN, 3, true))
 	elif finished != null and finished.state == RogueRun.State.LOST:
 		root.add_child(_label(Lang.t("Perdiste en la canción %d de %d.") % [
 			finished.index + 1, finished.songs_total()], 20, RED, 3, true))
@@ -316,16 +317,10 @@ func _center(run: RogueRun) -> Control:
 	box.add_child(_label(Lang.t("PARTIDA"), 14, GuiTheme.TEXT_DIM, 0, true))
 	box.add_child(_stat_text(Lang.t("JEFES SUPERADOS"), Lang.t("%d de %d") % [
 		run.bosses_beaten, run.songs_total()]))
-	if boss.size == RogueCatalog.Size.FINAL:
-		box.add_child(_stat_text(Lang.t("VUELTA"), Lang.t("Final")))
-	else:
-		var round_i := run.index / 3
-		box.add_child(_stat_text(Lang.t("VUELTA"), Lang.t("%d de %d  (fallos x%s)") % [round_i + 1,
-			RogueCatalog.ROUND_MISS_FACTOR.size(), Lang.decimal(RogueCatalog.ROUND_MISS_FACTOR[round_i], 2)]))
 	return panel
 
 
-## Las 10 canciones: las pasadas con OK, la actual iluminada.
+## Las canciones de la partida: las pasadas con OK, la actual iluminada.
 func _boss_strip(run: RogueRun) -> Control:
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER

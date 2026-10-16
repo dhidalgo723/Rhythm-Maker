@@ -23,6 +23,20 @@
       "title": "Sin conexión (prueba, jefe 2 min)",
       "size": "boss",
       "chart": "songs/prueba_jefe.chart.json"
+    },
+    {
+      "id": "coleccionista",
+      "title": "Coleccionista",
+      "size": "boss",
+      "combo": "techno",
+      "chart": "songs/coleccionista.chart.json"
+    },
+    {
+      "id": "saxbass",
+      "title": "Sax&Bass",
+      "size": "boss",
+      "combo": "rap",
+      "chart": "songs/saxbass.chart.json"
     }
   ]
 }

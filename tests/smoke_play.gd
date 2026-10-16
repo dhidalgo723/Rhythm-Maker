@@ -1,11 +1,12 @@
 extends Node
 
-## Smoke test headless del modo juego.
+## Smoke test headless de Juego Libre.
 ##   1. la biblioteca encuentra la cancion instalada y su audio carga
 ##   2. las ventanas de cada nivel (Perfecto ... Errada) estan donde deben
 ##   3. cada nivel da su puntuacion, con tiempos exactos
 ##   4. un bot que toca a tiempo en los 5 carriles (espacio incluido) acierta todo
-##   5. no tocar nada acaba en game over al pasar de MAX_MISSES
+##   5. sin limite de fallos: no tocar nada no hace perder, solo cuenta fallos
+##   6. Juego Libre con habilidades: se eligen y se aplican a una copia del chart
 ## Correr: godot --headless --path . res://tests/smoke_play.tscn
 
 const TONE := "res://tests/test_tone.wav"
@@ -21,10 +22,60 @@ func _ready() -> void:
 	_test_classify_windows()
 	_test_tier_scoring()
 	await _test_autoplay()
-	await _test_game_over()
+	await _test_no_miss_limit()
+	await _test_free_abilities()
 	if not _failed:
 		print("SMOKE TEST OK")
 	get_tree().quit(1 if _failed else 0)
+
+
+# --- 6. Juego Libre con habilidades ---
+func _test_free_abilities() -> void:
+	var entry: SongEntry = RoguePool.load_pool().find("prueba_grande")["entry"]
+	var notes_before := entry.chart.notes.size()
+
+	# La lista: elegir cancion, "con habilidades", marcar tres.
+	Session.free_abilities.assign([])
+	var select: Control = load("res://scenes/song_select.tscn").instantiate()
+	add_child(select)
+	await get_tree().process_frame
+	select._on_play(entry)
+	await get_tree().process_frame
+	_check(select._overlay != null and not select._main.visible, "al elegir cancion se pregunta como jugarla")
+	select._open_abilities()
+	await get_tree().process_frame
+	_check(not select._ability_buttons.has("impuesto") and not select._ability_buttons.has("saqueador"),
+		"las habilidades de dinero y ranura no se ofrecen en Juego Libre")
+	for id in ["rasgueo", "ondulada", "senuelos"]:
+		select._toggle_ability(id)
+	select._toggle_ability("ondulada")   # desmarcar
+	select._toggle_ability("ondulada")   # y volver a marcar
+	_check(select._picked.size() == 3 and (select._play_btn as Button).text.contains("3"),
+		"se marcan tantas como se quiera")
+	select._back_to_list()
+	_check(select._overlay == null and select._main.visible, "Esc / Cancelar vuelve a la lista")
+	select.queue_free()
+
+	# La partida: se aplican a una copia.
+	Session.selected_song = entry
+	Session.free_abilities.assign(["ondulada", "senuelos", "rasgueo"])
+	var scene: Control = load("res://scenes/play_scene.tscn").instantiate()
+	add_child(scene)
+	await get_tree().process_frame
+	var decoys := 0
+	for n in scene._chart.notes:
+		decoys += 1 if n.decoy else 0
+	_check(scene._rules != null and scene._rules.wave, "Pista Ondulada activa")
+	_check(decoys > 0, "Notas Senuelo: hay senuelos (%d)" % decoys)
+	_check(scene._rules.miss_limit == 0, "con habilidades sigue sin limite de fallos")
+	_check(entry.chart.notes.size() == notes_before and scene._chart != entry.chart,
+		"la grabacion guardada no cambia: se juega una copia")
+	scene.set_process(false)
+	scene.queue_free()
+	Session.free_abilities.assign([])
+	Session.selected_song = null
+	await get_tree().process_frame
+	print("[habilidades] se eligen en la lista y se aplican a una copia del chart")
 
 
 func _fail(msg: String) -> void:
@@ -173,10 +224,12 @@ func _test_autoplay() -> void:
 	pm.queue_free()
 
 
-# --- 5. game over al pasar de MAX_MISSES ---
-func _test_game_over() -> void:
+# --- 5. sin limite de fallos ---
+func _test_no_miss_limit() -> void:
 	var times: Array = []
-	for i in Judgement.MAX_MISSES + 3:
+	# 20 notas: mas de los 15 fallos con los que antes se perdia, y todas
+	# dentro del audio de prueba.
+	for i in 20:
 		times.append(500 + i * 100)
 
 	var pm := PlaybackManager.new()
@@ -190,11 +243,9 @@ func _test_game_over() -> void:
 		await get_tree().process_frame
 		guard += 1
 
-	print("[game over] errada=%d  perdio=%s  score=%d" % [pm.misses, lost[0], pm.score])
-	_check(lost[0], "no se disparo game_over sin tocar nada")
-	_check(pm.misses == Judgement.MAX_MISSES + 1,
-		"se esperaba perder exactamente al fallo %d, hubo %d" % [
-			Judgement.MAX_MISSES + 1, pm.misses])
+	print("[sin limite] errada=%d  perdio=%s  score=%d" % [pm.misses, lost[0], pm.score])
+	_check(not lost[0], "en Juego Libre no se pierde por fallos")
+	_check(pm.misses == times.size(), "se cuentan todos los fallos (%d de %d)" % [pm.misses, times.size()])
 	_check(pm.score == 0, "el score no deberia bajar de 0, quedo en %d" % pm.score)
 	pm.queue_free()
 

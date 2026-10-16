@@ -127,21 +127,31 @@ static func twin_source(lane: int) -> int:
 
 
 static func _apply_boss(run: RogueRun, p: RoguePrepared) -> void:
-	var r := run.rng_for("boss")
+	apply_abilities(p.boss.active_abilities(), p, run.rng_for("boss"))
+
+
+## Aplica habilidades de jefe al chart y las reglas de `p` (solo necesita chart,
+## rules y length_ms). La usa el roguelike con las del jefe y Juego Libre con
+## las que elige el jugador. Deja en p.notices los avisos para el jugador (que
+## carril se rompe, cual va en tresillos...) y en p.tax el Impuesto.
+static func apply_abilities(active: Array[String], p: RoguePrepared, r: RandomNumberGenerator) -> void:
 	var rules := p.rules
 	var length := p.length_ms
-	var active := p.boss.active_abilities()
 
 	# Primero lo que mueve notas de carril, luego lo que las marca: asi un Doble
 	# Golpe no cae en una nota que luego desaparece.
-	var order := ["cuerda_rota", "polirritmia", "carril_minado", "pegajosas"]
+	# Rasgueo despues de Pegajosas, para partir tambien sus largas. Teclas
+	# Mezcladas la ultima: reparte columnas a las notas que ya hay.
+	var order := ["cuerda_rota", "polirritmia", "carril_minado", "pegajosas", "rasgueo"]
 	var sorted: Array[String] = []
 	for id in order:
 		if id in active:
 			sorted.append(id)
 	for id in active:
-		if not id in sorted:
+		if not id in sorted and id != "teclas_mezcladas":
 			sorted.append(id)
+	if "teclas_mezcladas" in active:
+		sorted.append("teclas_mezcladas")
 
 	for id in sorted:
 		var data: Dictionary = RogueCatalog.ABILITY[id]
@@ -194,8 +204,12 @@ static func _apply_boss(run: RogueRun, p: RoguePrepared) -> void:
 					p.notices.append(Lang.t("Carril Minado: %s") % Lanes.lane_name(lane))
 			"fantasma":
 				rules.ghost = true
-			"cambio_clave":
-				rules.key_rotation_every = int(data["every"])
+			"teclas_mezcladas":
+				var seg := ChartTransforms.random_segment(r, length, RogueCatalog.BOSS_SEGMENT)
+				ChartTransforms.shuffle_columns(p.chart, seg.x, seg.y, r, rules.disabled_lanes)
+				rules.add_effect(TimedEffect.SHUFFLE_NOTES, seg.x, seg.y)
+			"rasgueo":
+				ChartTransforms.strum(p.chart, r, int(data["min_ms"]), int(data["gap_ms"]))
 			"polirritmia":
 				var lane := ChartTransforms.polyrhythm(p.chart, r)
 				if lane != -1:
