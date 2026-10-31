@@ -143,8 +143,11 @@ const TEXT := {
 
 	# --- Ajustes ---
 	"CONTROLES": "CONTROLS",
-	"INFORMACIÓN": "INFORMATION",
-	"Idioma": "Language",
+	"IDIOMA": "LANGUAGE",
+	"INFORMACIÓN JEFES": "BOSS INFO",
+	"INFORMACIÓN MEJORAS": "UPGRADE INFO",
+	"Idioma del juego": "Game language",
+	"El cambio se guarda y se aplica al momento.": "The change is saved and applied right away.",
 	"Pulsa un hueco y después la tecla que quieras. Esc cancela.":
 		"Select a slot and then press the key you want. Esc cancels.",
 	"Quitar la tecla secundaria": "Remove the secondary key",
@@ -460,4 +463,5 @@ const TEXT := {
 	"Rock": "Rock",
 	"Salsa": "Salsa",
 	"Experimental": "Experimental",
+	"Dubstep": "Dubstep",
 }

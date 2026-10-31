@@ -277,6 +277,7 @@ const FINAL_COMBOS := {
 	"rock": {"name": "Rock", "abilities": ["polirritmia", "pista_invertida", "teclas_mezcladas"]},
 	"salsa": {"name": "Salsa", "abilities": ["acoplamiento", "zoom", "crescendo", "doble_golpe"]},
 	"experimental": {"name": "Experimental", "abilities": ["polirritmia", "teclas_mezcladas"]},
+	"dubstep": {"name": "Dubstep", "abilities": ["fantasma", "polirritmia", "zoom"]},
 }
 
 enum ItemKind { SLOT, ARROW, CONSUMABLE }

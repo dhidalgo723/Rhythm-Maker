@@ -21,6 +21,7 @@ Settings="*res://scripts/settings.gd"
 Session="*res://scripts/session.gd"
 Library="*res://scripts/song_library.gd"
 Gui="*res://scripts/gui.gd"
+Music="*res://scripts/music.gd"
 
 [input]
 

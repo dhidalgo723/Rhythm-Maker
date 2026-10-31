@@ -1,11 +1,12 @@
 extends Control
 
-## Pantalla de Ajustes, en dos pestanas:
+## Pantalla de Ajustes, en cuatro apartados:
 ##   - Controles: reasignar las teclas de los carriles (principal y secundaria,
 ##     que puede quedar vacia), presets y latencia.
-##   - Informacion: puntuacion, reglas del roguelike, jefes, mejoras y
-##     consumibles (ver InfoText).
-## Arriba a la derecha, el idioma del juego.
+##   - Idioma: el idioma del juego.
+##   - Informacion jefes: reglas del roguelike, puntuacion y habilidades.
+##   - Informacion mejoras: mejoras de ranura y de flecha y consumibles.
+## Los textos de informacion salen de InfoText.
 
 const MENU_SCENE := "res://scenes/main_menu.tscn"
 const CALIBRATION_SCENE := "res://scenes/calibration_scene.tscn"
@@ -16,12 +17,24 @@ const NAV_GAP := 22
 ## Cuanto baja el texto de Informacion con Av Pag / Re Pag.
 const SCROLL_STEP := 160
 
-enum Tab { CONTROLS, INFO }
+enum Tab { CONTROLS, LANGUAGE, BOSSES, UPGRADES }
+
+const TAB_TITLES := {
+	Tab.CONTROLS: "CONTROLES",
+	Tab.LANGUAGE: "IDIOMA",
+	Tab.BOSSES: "INFORMACIÓN JEFES",
+	Tab.UPGRADES: "INFORMACIÓN MEJORAS",
+}
+## Categorias de InfoText de cada apartado de informacion.
+const INFO_TABS := {
+	Tab.BOSSES: ["rogue_rules", "scoring", "boss_small", "boss_medium", "boss_big", "boss_final"],
+	Tab.UPGRADES: ["slot", "arrow", "consumable"],
+}
 
 ## Se conservan al recargar la escena tras cambiar de idioma.
 static var _last_tab := Tab.CONTROLS
-static var _last_category := 0
-static var _focus_language := false
+## Ultima categoria vista en cada apartado de informacion.
+static var _last_category := {Tab.BOSSES: 0, Tab.UPGRADES: 0}
 
 ## _key_buttons[slot][lane] y _clear_buttons[lane], indexados por id de carril
 ## (no por fila: las filas siguen el orden de pantalla, con el espacio en medio).
@@ -32,12 +45,11 @@ var _offset_label: Label
 var _status: Label
 
 var _tab_buttons: Array[Button] = []
-var _controls: Control
-var _info: Control
-var _language_btn: Button
-var _category_buttons: Array[Button] = []
-var _info_scroll: ScrollContainer
-var _info_text: RichTextLabel
+## Contenido de cada apartado: Tab -> Control.
+var _pages := {}
+var _language_buttons := {}   # codigo de idioma -> boton
+## Por apartado de informacion: {categories, buttons, scroll, text}.
+var _info_views := {}
 
 ## Hueco que espera una tecla, o -1 si no estamos reasignando.
 var _waiting_slot := -1
@@ -66,12 +78,13 @@ func _ready() -> void:
 	root.add_child(title)
 	root.add_child(_build_tab_row())
 
-	_controls = _build_controls()
-	_controls.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root.add_child(_controls)
-	_info = _build_info()
-	_info.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root.add_child(_info)
+	_pages[Tab.CONTROLS] = _build_controls()
+	_pages[Tab.LANGUAGE] = _build_language()
+	for tab in INFO_TABS:
+		_pages[tab] = _build_info(tab)
+	for tab in _pages:
+		(_pages[tab] as Control).size_flags_vertical = Control.SIZE_EXPAND_FILL
+		root.add_child(_pages[tab])
 
 	_status = _center_label("", 15)
 	root.add_child(_status)
@@ -84,15 +97,14 @@ func _ready() -> void:
 	root.add_child(back)
 
 	_refresh()
-	_show_category(_last_category)
+	for tab in INFO_TABS:
+		_show_category(tab, _last_category[tab])
 	_show_tab(_last_tab)
 
-	# Algo tiene que tener el foco. Tras cambiar de idioma, el boton de idioma;
-	# si no, lo primero de la pestana (en Controles, lo mas probable es venir a
-	# cambiar una tecla).
-	var first: Button = _language_btn if _focus_language else _first_of_tab(_last_tab)
-	_focus_language = false
-	first.grab_focus.call_deferred()
+	# Algo tiene que tener el foco: lo primero del apartado (en Controles, lo
+	# mas probable es venir a cambiar una tecla; tras cambiar de idioma, el
+	# idioma elegido).
+	_first_of_tab(_last_tab).grab_focus.call_deferred()
 
 
 # ---------------------------------------------------------------- Pestanas
@@ -102,23 +114,14 @@ func _build_tab_row() -> Control:
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", NAV_GAP)
 
-	for tab in [Tab.CONTROLS, Tab.INFO]:
+	for tab in TAB_TITLES:
 		var b := Button.new()
-		b.text = Lang.t("CONTROLES") if tab == Tab.CONTROLS else Lang.t("INFORMACIÓN")
-		b.custom_minimum_size = Vector2(210, 40)
+		b.text = Lang.t(TAB_TITLES[tab])
+		b.custom_minimum_size = Vector2(230, 40)
+		b.add_theme_font_size_override("font_size", 15)
 		b.pressed.connect(_on_tab_pressed.bind(tab))
 		row.add_child(b)
 		_tab_buttons.append(b)
-
-	var gap := Control.new()
-	gap.custom_minimum_size = Vector2(60, 0)
-	row.add_child(gap)
-
-	_language_btn = Button.new()
-	_language_btn.custom_minimum_size = Vector2(230, 40)
-	_language_btn.text = "%s: %s" % [Lang.t("Idioma"), Lang.NAMES[Settings.language]]
-	_language_btn.pressed.connect(_on_language_pressed)
-	row.add_child(_language_btn)
 	return row
 
 
@@ -132,8 +135,8 @@ func _on_tab_pressed(tab: Tab) -> void:
 
 func _show_tab(tab: Tab) -> void:
 	_last_tab = tab
-	_controls.visible = tab == Tab.CONTROLS
-	_info.visible = tab == Tab.INFO
+	for t in _pages:
+		(_pages[t] as Control).visible = t == tab
 	# La pestana abierta, en amarillo; la otra, apagada.
 	for i in _tab_buttons.size():
 		var active := i == tab
@@ -145,18 +148,43 @@ func _show_tab(tab: Tab) -> void:
 
 
 func _first_of_tab(tab: Tab) -> Button:
-	if tab == Tab.INFO:
-		return _category_buttons[_last_category]
+	match tab:
+		Tab.LANGUAGE:
+			return _language_buttons[Settings.language]
+		Tab.BOSSES, Tab.UPGRADES:
+			return (_info_views[tab]["buttons"] as Array)[_last_category[tab]]
 	return _key_buttons[Settings.SLOT_PRIMARY][Lanes.DISPLAY_ORDER[0]]
 
 
-## Cambia al siguiente idioma y recarga la pantalla: los textos se ponen al
-## crear cada escena, asi que recargar es lo que los traduce todos.
-func _on_language_pressed() -> void:
-	var codes := Lang.CODES
-	var next := codes[(codes.find(Settings.language) + 1) % codes.size()]
-	Settings.set_language(next)
-	_focus_language = true
+# ---------------------------------------------------------------- Idioma
+
+func _build_language() -> Control:
+	var box := VBoxContainer.new()
+	box.alignment = BoxContainer.ALIGNMENT_CENTER
+	box.add_theme_constant_override("separation", 14)
+	box.add_child(_center_label(Lang.t("Idioma del juego"), 19))
+	for code in Lang.CODES:
+		var b := Button.new()
+		b.text = Lang.NAMES[code]
+		b.custom_minimum_size = Vector2(320, 48)
+		b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		if code == Settings.language:
+			b.add_theme_color_override("font_color", GuiTheme.TEXT_FOCUS)
+		b.pressed.connect(_on_language_chosen.bind(code))
+		box.add_child(b)
+		_language_buttons[code] = b
+	var hint := _center_label(Lang.t("El cambio se guarda y se aplica al momento."), 13)
+	hint.modulate = Color(1, 1, 1, 0.55)
+	box.add_child(hint)
+	return box
+
+
+## Cambia el idioma y recarga la pantalla: los textos se ponen al crear cada
+## escena, asi que recargar es lo que los traduce todos.
+func _on_language_chosen(code: String) -> void:
+	if code == Settings.language:
+		return
+	Settings.set_language(code)
 	get_tree().reload_current_scene()
 
 
@@ -310,7 +338,8 @@ func _nudge_offset(amount: int) -> void:
 
 # ---------------------------------------------------------------- Informacion
 
-func _build_info() -> Control:
+func _build_info(tab: Tab) -> Control:
+	var categories: Array = INFO_TABS[tab]
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", NAV_GAP + 8)
 
@@ -319,15 +348,16 @@ func _build_info() -> Control:
 	list.alignment = BoxContainer.ALIGNMENT_CENTER
 	list.add_theme_constant_override("separation", 6)
 	row.add_child(list)
-	for i in InfoText.CATEGORIES.size():
+	var buttons: Array[Button] = []
+	for i in categories.size():
 		var b := Button.new()
-		b.text = InfoText.title(InfoText.CATEGORIES[i])
+		b.text = InfoText.title(categories[i])
 		b.custom_minimum_size = Vector2(250, 36)
 		b.add_theme_font_size_override("font_size", 15)
-		b.focus_entered.connect(_show_category.bind(i))
-		b.pressed.connect(_show_category.bind(i))
+		b.focus_entered.connect(_show_category.bind(tab, i))
+		b.pressed.connect(_show_category.bind(tab, i))
 		list.add_child(b)
-		_category_buttons.append(b)
+		buttons.append(b)
 
 	# Derecha: el texto, con scroll si no cabe.
 	var right := VBoxContainer.new()
@@ -340,35 +370,38 @@ func _build_info() -> Control:
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right.add_child(panel)
 
-	_info_scroll = ScrollContainer.new()
-	_info_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_info_scroll.follow_focus = false
-	panel.add_child(_info_scroll)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.follow_focus = false
+	panel.add_child(scroll)
 
-	_info_text = RichTextLabel.new()
-	_info_text.bbcode_enabled = true
-	_info_text.fit_content = true
-	_info_text.scroll_active = false
-	_info_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_info_text.focus_mode = Control.FOCUS_NONE
-	_info_text.add_theme_font_size_override("normal_font_size", 14)
-	_info_scroll.add_child(_info_text)
+	var text := RichTextLabel.new()
+	text.bbcode_enabled = true
+	text.fit_content = true
+	text.scroll_active = false
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text.focus_mode = Control.FOCUS_NONE
+	text.add_theme_font_size_override("normal_font_size", 14)
+	scroll.add_child(text)
 
 	var hint := _center_label(Lang.t("Av Pág / Re Pág o la rueda del ratón para desplazar el texto"), 12)
 	hint.modulate = Color(1, 1, 1, 0.55)
 	right.add_child(hint)
+	_info_views[tab] = {"categories": categories, "buttons": buttons, "scroll": scroll, "text": text}
 	return row
 
 
-func _show_category(i: int) -> void:
-	_last_category = i
-	_info_text.text = InfoText.text(InfoText.CATEGORIES[i])
-	_info_scroll.scroll_vertical = 0
-	for j in _category_buttons.size():
+func _show_category(tab: Tab, i: int) -> void:
+	_last_category[tab] = i
+	var view: Dictionary = _info_views[tab]
+	(view["text"] as RichTextLabel).text = InfoText.text(view["categories"][i])
+	(view["scroll"] as ScrollContainer).scroll_vertical = 0
+	var buttons: Array = view["buttons"]
+	for j in buttons.size():
 		if j == i:
-			_category_buttons[j].add_theme_color_override("font_color", GuiTheme.TEXT_FOCUS)
+			(buttons[j] as Button).add_theme_color_override("font_color", GuiTheme.TEXT_FOCUS)
 		else:
-			_category_buttons[j].remove_theme_color_override("font_color")
+			(buttons[j] as Button).remove_theme_color_override("font_color")
 
 
 # ---------------------------------------------------------------- Comun
@@ -466,17 +499,18 @@ func _input(event: InputEvent) -> void:
 	if not (event is InputEventKey) or not (event as InputEventKey).pressed:
 		return
 	var key := event as InputEventKey
-	if key.echo and _waiting_slot == -1 and not _info.visible:
+	var view: Dictionary = _info_views.get(_last_tab, {})
+	if key.echo and _waiting_slot == -1 and view.is_empty():
 		return
 
 	if _waiting_slot == -1:
 		if key.keycode == KEY_ESCAPE and not key.echo:
 			get_viewport().set_input_as_handled()
 			_go_back()
-		elif _info.visible and key.keycode in [KEY_PAGEDOWN, KEY_PAGEUP]:
+		elif not view.is_empty() and key.keycode in [KEY_PAGEDOWN, KEY_PAGEUP]:
 			get_viewport().set_input_as_handled()
 			var step := SCROLL_STEP if key.keycode == KEY_PAGEDOWN else -SCROLL_STEP
-			_info_scroll.scroll_vertical += step
+			(view["scroll"] as ScrollContainer).scroll_vertical += step
 		return
 	if key.echo:
 		return

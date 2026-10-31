@@ -24,10 +24,30 @@ func _ready() -> void:
 	await _test_no_focus_while_playing()
 	await _test_no_focus_while_recording()
 	await _test_no_focus_while_calibrating()
+	await _test_music()
 
 	get_tree().paused = false
 	print("SMOKE TEST %s" % ("FAIL" if _failed else "OK"))
 	get_tree().quit(1 if _failed else 0)
+
+
+## Tema principal: en bucle en los menus, en pausa fuera de ellos. Sin el
+## archivo (no se sube al repo) no hay nada que probar.
+func _test_music() -> void:
+	if not ResourceLoader.exists(Music.PATH):
+		print("[musica] sin music/main_theme.mp3, no se prueba")
+		return
+	_check(Music._player != null and (Music._player.stream as AudioStreamMP3).loop, "el tema se repite en bucle")
+	Music.set_playing(true)
+	_check(Music.is_playing(), "en un menu, suena")
+	# Esta escena (el test) no es un menu: al notar el cambio, se pausa.
+	Music._scene = "res://scenes/main_menu.tscn"
+	await _wait(2)
+	_check(not Music.is_playing() and Music._player.stream_paused, "fuera de los menus se pausa")
+	for path in ["res://scenes/song_select.tscn", "res://scenes/rogue_menu.tscn", "res://scenes/play_scene.tscn",
+			"res://scenes/recording_scene.tscn", "res://scenes/calibration_scene.tscn"]:
+		_check(not path in Music.MENU_SCENES, "%s: sin tema" % path.get_file())
+	print("[musica] suena en los menus y se pausa en el resto")
 
 
 func _check(cond: bool, msg: String) -> void:

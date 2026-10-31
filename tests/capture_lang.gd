@@ -55,15 +55,18 @@ func _settings_shots(code: String) -> void:
 	add_child(scene)
 	await _wait(0.4)
 	await _shoot("lang_%s_ajustes_controles" % code)
-	scene._on_tab_pressed(scene.Tab.INFO)
-	scene._category_buttons[3].grab_focus()   # jefes medianos
+	scene._on_tab_pressed(scene.Tab.LANGUAGE)
+	await _wait(0.3)
+	await _shoot("lang_%s_ajustes_idioma" % code)
+	scene._on_tab_pressed(scene.Tab.BOSSES)
+	(scene._info_views[scene.Tab.BOSSES]["buttons"][3] as Button).grab_focus()   # jefes medianos
 	await _wait(0.3)
 	await _shoot("lang_%s_ajustes_info" % code)
-	scene._category_buttons[0].grab_focus()   # puntuacion
+	scene._on_tab_pressed(scene.Tab.UPGRADES)
 	await _wait(0.3)
-	await _shoot("lang_%s_ajustes_puntuacion" % code)
+	await _shoot("lang_%s_ajustes_mejoras" % code)
 	scene._last_tab = scene.Tab.CONTROLS
-	scene._last_category = 0
+	scene._last_category = {scene.Tab.BOSSES: 0, scene.Tab.UPGRADES: 0}
 	scene.queue_free()
 	await _wait(0.1)
 

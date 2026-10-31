@@ -19,6 +19,18 @@
 	  "chart": "songs/pequeno_retro.chart.json"
 	},
 	{
+	  "id": "pequeno_rnb",
+	  "title": "R&B",
+	  "size": "small",
+	  "chart": "songs/pequeno_rnb.chart.json"
+	},
+	{
+	  "id": "pequeno_trap",
+	  "title": "Trap",
+	  "size": "small",
+	  "chart": "songs/pequeno_trap.chart.json"
+	},
+	{
 	  "id": "mediano_anime",
 	  "title": "Anime",
 	  "size": "medium",
@@ -67,6 +79,12 @@
 	  "chart": "songs/grande_miami_bass.chart.json"
 	},
 	{
+	  "id": "grande_dubstep",
+	  "title": "Dubstep",
+	  "size": "big",
+	  "chart": "songs/grande_dubstep.chart.json"
+	},
+	{
 	  "id": "prueba_jefe",
 	  "title": "Sin conexión (prueba, jefe 2 min)",
 	  "size": "boss",
@@ -93,6 +111,13 @@
 	  "size": "boss",
 	  "combo": "salsa",
 	  "chart": "songs/final_salsa.chart.json"
+	},
+	{
+	  "id": "final_dubstep",
+	  "title": "Dubstep 13",
+	  "size": "boss",
+	  "combo": "dubstep",
+	  "chart": "songs/final_dubstep.chart.json"
 	}
   ]
 }

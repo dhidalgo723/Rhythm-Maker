@@ -36,7 +36,7 @@ func _ready() -> void:
 ## demas, la de prueba sin combinacion.
 func _test_combo_songs() -> void:
 	_check(_pool.problems.is_empty(), "pool.json sin problemas: %s" % ", ".join(_pool.problems))
-	var want := {"techno": "coleccionista", "rap": "saxbass", "salsa": "final_salsa"}
+	var want := {"techno": "coleccionista", "rap": "saxbass", "salsa": "final_salsa", "dubstep": "final_dubstep"}
 	var seen := {}
 	for seed in 400:
 		var run := RogueRun.create(_pool, seed)

@@ -126,17 +126,30 @@ func _test_settings_in_english() -> void:
 	var scene: Control = load("res://scenes/settings_scene.tscn").instantiate()
 	add_child(scene)
 	await get_tree().process_frame
-	_check(scene._controls.visible != scene._info.visible, "solo una pestana a la vez")
-	scene._on_tab_pressed(scene.Tab.INFO)
-	await get_tree().process_frame
-	_check(scene._info.visible and not scene._controls.visible, "la pestana Informacion se abre")
-	for i in InfoText.CATEGORIES.size():
-		scene._show_category(i)
-		_check(scene._info_text.text.length() > 40, "la categoria %s tiene texto" % InfoText.CATEGORIES[i])
-		_check(not "Durante" in scene._info_text.text, "la categoria %s deberia estar en ingles" % InfoText.CATEGORIES[i])
-	scene._on_tab_pressed(scene.Tab.CONTROLS)
-	_check(scene._controls.visible, "se vuelve a Controles")
-	_check((scene._tab_buttons[0] as Button).text == "CONTROLS", "las pestanas salen en ingles")
+	_check(scene._tab_buttons.size() == 4, "cuatro apartados")
+	var seen := {}
+	for tab in scene.TAB_TITLES:
+		scene._on_tab_pressed(tab)
+		await get_tree().process_frame
+		var visible := 0
+		for t in scene._pages:
+			visible += 1 if scene._pages[t].visible else 0
+		_check(visible == 1 and scene._pages[tab].visible, "solo se ve el apartado elegido (%d)" % tab)
+		_check(scene._first_of_tab(tab).has_focus(), "al abrir un apartado, el foco va a lo primero")
+	# Entre los dos apartados de informacion estan todas las categorias.
+	for tab in scene.INFO_TABS:
+		var view: Dictionary = scene._info_views[tab]
+		for i in view["categories"].size():
+			scene._show_category(tab, i)
+			var text: String = view["text"].text
+			var cat: String = view["categories"][i]
+			seen[cat] = true
+			_check(text.length() > 40, "la categoria %s tiene texto" % cat)
+			_check(not "Durante" in text, "la categoria %s deberia estar en ingles" % cat)
+	for cat in InfoText.CATEGORIES:
+		_check(seen.has(cat), "la categoria %s esta en algun apartado" % cat)
+	_check(scene._language_buttons.size() == Lang.CODES.size(), "un boton por idioma")
+	_check((scene._tab_buttons[0] as Button).text == "CONTROLS", "los apartados salen en ingles")
 	scene._last_tab = scene.Tab.CONTROLS
 	scene.queue_free()
 	await get_tree().process_frame
