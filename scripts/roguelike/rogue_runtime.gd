@@ -27,7 +27,6 @@ func setup(rogue_run: RogueRun, prep: RoguePrepared, manager: PlaybackManager) -
 	pm = manager
 	uses_left = prep.slot_uses if run.slot_id != "" and not _is_passive(run.slot_id) else 0
 	pm.slot_stolen.connect(_on_slot_stolen)
-	pm.bis_triggered.connect(_on_bis)
 
 
 func slot_name() -> String:
@@ -189,7 +188,3 @@ func _on_slot_stolen() -> void:
 
 
 ## Bis se gasta al salvarte.
-func _on_bis() -> void:
-	run.slot_id = ""
-	uses_left = 0
-	slot_changed.emit()

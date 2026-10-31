@@ -191,7 +191,7 @@ func _right_content() -> Control:
 	box.add_child(_icon_row(ARROW_YELLOW, 18, "RITMO", "%s · %s" % [
 		RogueCatalog.duration_text(int(spec["duration_ms"])), RogueCatalog.speed_name(spec["speed"])],
 		GuiTheme.TEXT))
-	box.add_child(_icon_row(HEART, 22, "FALLOS", "%d permitidos" % boss.miss_limit(), GuiTheme.TEXT))
+	box.add_child(_icon_row(HEART, 22, "PRECISIÓN", "mínima 70 %", GuiTheme.TEXT))
 
 	var ability: String = boss.abilities[0]
 	if _style == "a":

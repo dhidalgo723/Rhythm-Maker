@@ -450,11 +450,14 @@ func _show_rogue_results(lost: bool) -> void:
 	_hud_combo.text = ""
 
 	var lines: Array[String] = [
-		Lang.t("Puntuación: %d / %d") % [_pm.score, _prepared.target_score],
-		Lang.t("Fallos: %d / %d") % [_pm.misses, _pm.rules.miss_limit],
-		Lang.t("Precisión: %.1f%%") % _pm.accuracy(),
+		Lang.t("Precisión: %s %% (mínima %d %%)") % [Lang.decimal(_pm.accuracy()), roundi(_prepared.min_accuracy)],
+		Lang.t("Puntuación: %d") % _pm.score,
+		Lang.t("Fallos: %d") % _pm.misses,
 		"",
 	]
+	if out["bis"]:
+		lines.append("[color=#%s]%s[/color]" % [GuiTheme.TEXT_FOCUS.to_html(false),
+			Lang.t("¡Bis! Pasas por esta vez, y el Bis se gasta.")])
 	if out["passed"]:
 		lines.append(Lang.t("[color=#%s]+%d monedas[/color]  (tienes %d)") % [
 			GuiTheme.TEXT_FOCUS.to_html(false), out["money"], run.money])

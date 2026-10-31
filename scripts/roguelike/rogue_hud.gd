@@ -76,7 +76,7 @@ func _build() -> void:
 	_target_bar = ProgressBar.new()
 	_target_bar.show_percentage = false
 	_target_bar.custom_minimum_size = Vector2(0, 24)
-	_target_bar.max_value = maxi(1, prepared.target_score)
+	_target_bar.max_value = 100.0
 	col.add_child(_target_bar)
 
 	col.add_child(_spacer(6))
@@ -148,8 +148,12 @@ func _refresh_slot() -> void:
 func _process(delta: float) -> void:
 	if pm == null:
 		return
-	_target_label.text = Lang.t("Objetivo: %d / %d") % [pm.score, prepared.target_score]
-	_target_bar.value = mini(pm.score, prepared.target_score)
+	# Precision hasta ahora contra la minima: en rojo mientras no llega.
+	var acc := pm.accuracy() if pm.judged() > 0 else 100.0
+	_target_label.text = Lang.t("Precisión: %s %% / %d %%") % [Lang.decimal(acc), roundi(prepared.min_accuracy)]
+	_target_label.add_theme_color_override("font_color",
+		GuiTheme.TEXT if acc >= prepared.min_accuracy else Color("f9393f"))
+	_target_bar.value = acc
 
 	var t := pm.get_time_ms()
 	var lines: Array[String] = []

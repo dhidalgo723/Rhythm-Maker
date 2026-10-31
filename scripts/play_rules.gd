@@ -29,7 +29,6 @@ var perfect_window_mult := 1.0                ## Ventana Estrecha: x0.5
 
 # --- Riesgo ---
 var risk_free_until_ms := 0.0                 ## Ensayo: los fallos antes de esto no cuentan
-var bis := false                              ## Bis: sobrevives una vez al limite
 
 # --- Jefes ---
 var boss_shield_perfects := 0                 ## Escudo del Jefe: perfectos seguidos para romperlo

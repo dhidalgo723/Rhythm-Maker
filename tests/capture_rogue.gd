@@ -125,7 +125,7 @@ func _play_shots(run: RogueRun) -> void:
 	await _shoot("rogue_3b_mejora_activada")
 
 	# Resultado: superado.
-	scene._pm.score = Session.rogue_prepared.target_score + 1234
+	scene._pm.score += 1234
 	scene._pm.stop()
 	scene._show_rogue_results(false)
 	await _wait(0.4)

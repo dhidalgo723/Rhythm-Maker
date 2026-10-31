@@ -14,7 +14,8 @@ var rules: PlayRules
 var length_ms := 0.0
 ## Notas reales que se pueden tocar (sin senuelos ni carriles desactivados).
 var notes := 0
-var target_score := 0
+## Precision con la que hay que acabar (70%, mas o menos segun consumibles).
+var min_accuracy := RogueCatalog.MIN_ACCURACY
 ## Usos de la mejora de ranura en esta cancion (2 con Grabadora).
 var slot_uses := 1
 var money_mult := 1.0

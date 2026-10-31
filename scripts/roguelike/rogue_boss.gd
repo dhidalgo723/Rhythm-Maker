@@ -37,6 +37,3 @@ func active_abilities() -> Array[String]:
 func spec() -> Dictionary:
 	return RogueCatalog.SIZE_SPECS[size]
 
-
-func miss_limit() -> int:
-	return RogueCatalog.miss_limit(index)

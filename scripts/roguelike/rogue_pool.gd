@@ -12,13 +12,16 @@ extends RefCounted
 ## "size" es small / medium / big / boss (la cancion 10). Una de "boss" puede
 ## llevar "combo" (techno, rap... ver RogueCatalog.FINAL_COMBOS): es la cancion
 ## del Jefe cuando sale esa combinacion. Las combinaciones sin cancion propia
-## usan una de "boss" sin combo. El audio se busca por el song_path del chart,
-## relativo a la carpeta del chart.
+## usan una de "boss" sin combo. Las canciones se tocan enteras, hasta su ultima
+## nota; con "cut_to_size": true se cortan a la duracion de su tamano (las de
+## prueba). El audio se busca por el song_path del chart, relativo a la carpeta
+## del chart.
 
 const PATH := "res://roguelike/pool.json"
 const SIZES: Array[String] = ["small", "medium", "big", "boss"]
 
-## Cada cancion: {id, title, size (String), combo (String, "" si no), entry (SongEntry)}.
+## Cada cancion: {id, title, size (String), combo (String, "" si no), cut (bool),
+## entry (SongEntry)}.
 var songs: Array[Dictionary] = []
 ## Problemas encontrados al cargar (vacio = todo bien).
 var problems: Array[String] = []
@@ -74,7 +77,8 @@ func _add(raw: Dictionary, base: String) -> void:
 		return
 	if raw.has("title"):
 		chart.title = str(raw["title"])
-	songs.append({"id": id, "title": entry.title(), "size": size, "combo": combo, "entry": entry})
+	songs.append({"id": id, "title": entry.title(), "size": size, "combo": combo,
+		"cut": bool(raw.get("cut_to_size", false)), "entry": entry})
 
 
 func songs_of_size(size_key: String) -> Array[Dictionary]:
@@ -107,6 +111,17 @@ func missing_sizes() -> Array[String]:
 		if songs_of_size(key).is_empty():
 			out.append(key)
 	return out
+
+
+## Cuanto dura una cancion al jugarla (sin contar que el audio sea mas corto):
+## hasta su ultima nota, o la duracion de su tamano si se corta.
+static func song_length_ms(song: Dictionary, size: RogueCatalog.Size) -> float:
+	if song.is_empty() or bool(song.get("cut", false)):
+		return float(RogueCatalog.SIZE_SPECS[size]["duration_ms"])
+	var last := 0
+	for n: ChartNote in (song["entry"] as SongEntry).chart.notes:
+		last = maxi(last, n.end_ms())
+	return last + PlaybackManager.AFTER_LAST_NOTE_MS
 
 
 func find(id: String) -> Dictionary:

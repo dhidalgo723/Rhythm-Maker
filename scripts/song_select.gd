@@ -136,6 +136,13 @@ func _refresh() -> void:
 		if first == null:
 			first = play
 
+		var rename := Button.new()
+		rename.text = Lang.t("Renombrar")
+		rename.custom_minimum_size = Vector2(150, 54)
+		rename.tooltip_text = Lang.t("Cambiar el nombre de esta grabación")
+		rename.pressed.connect(_open_rename.bind(entry))
+		row.add_child(rename)
+
 		var del := Button.new()
 		del.text = "X"
 		del.custom_minimum_size = Vector2(54, 54)
@@ -182,6 +189,47 @@ func _close_overlay() -> void:
 		_overlay.queue_free()
 		_overlay = null
 	_main.visible = true
+
+
+## Cambiar el nombre de una grabacion. Intro guarda, Esc cancela.
+func _open_rename(entry: SongEntry) -> void:
+	_entry = entry
+	var box := _open_overlay()
+	box.add_child(_title(Lang.t("CAMBIAR EL NOMBRE"), 24))
+	var edit := LineEdit.new()
+	edit.text = entry.title()
+	edit.max_length = Library.MAX_TITLE
+	edit.custom_minimum_size = Vector2(460, 44)
+	edit.select_all_on_focus = true
+	box.add_child(edit)
+	var error := _title("", 13)
+	error.add_theme_color_override("font_color", Color("f9393f"))
+	box.add_child(error)
+
+	var save := func() -> void:
+		var err := Library.rename_song(entry, edit.text)
+		if err != "":
+			error.text = err
+			edit.grab_focus()
+			return
+		_back_to_list()
+	edit.text_submitted.connect(func(_t: String) -> void: save.call())
+
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 26)
+	box.add_child(row)
+	var ok := Button.new()
+	ok.text = Lang.t("Guardar")
+	ok.custom_minimum_size = Vector2(180, 42)
+	ok.pressed.connect(save)
+	row.add_child(ok)
+	var cancel := Button.new()
+	cancel.text = Lang.t("Cancelar")
+	cancel.custom_minimum_size = Vector2(180, 42)
+	cancel.pressed.connect(_back_to_list)
+	row.add_child(cancel)
+	edit.grab_focus.call_deferred()
 
 
 ## Primera pregunta: con o sin habilidades.

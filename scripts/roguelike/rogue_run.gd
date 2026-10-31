@@ -137,24 +137,30 @@ func prepare_song() -> RoguePrepared:
 	return prepared
 
 
-## Cierra la cancion actual. `result`: {score, misses, lost (bool), coin_perfects
-## (PackedInt32Array), y para el mapa accuracy, perfects y max_combo}.
-## Devuelve lo que paso: {passed, money, reason} mas las cifras de la cancion
-## (boss_index, score, target, misses, miss_limit, accuracy, perfects, max_combo).
+## Cierra la cancion actual. `result`: {score, misses, accuracy, lost (bool, al
+## rendirse), coin_perfects (PackedInt32Array), perfects, max_combo}.
+## Solo se pierde por acabar por debajo de la precision minima (o rendirse);
+## Bis salva una vez y se gasta. Devuelve lo que paso: {passed, money, reason,
+## bis} mas las cifras de la cancion para el mapa (boss_index, score, misses,
+## accuracy, min_accuracy, perfects, max_combo).
 func finish_song(prepared: RoguePrepared, result: Dictionary) -> Dictionary:
+	var accuracy := float(result.get("accuracy", 0.0))
 	var out := {
-		"passed": false, "money": 0, "reason": "",
+		"passed": false, "money": 0, "reason": "", "bis": false,
 		"boss_index": index,
-		"score": int(result.get("score", 0)), "target": prepared.target_score,
-		"misses": int(result.get("misses", 0)), "miss_limit": prepared.rules.miss_limit,
-		"accuracy": float(result.get("accuracy", 0.0)),
+		"score": int(result.get("score", 0)), "misses": int(result.get("misses", 0)),
+		"accuracy": accuracy, "min_accuracy": prepared.min_accuracy,
 		"perfects": int(result.get("perfects", 0)), "max_combo": int(result.get("max_combo", 0)),
 	}
 	if bool(result.get("lost", false)):
-		out["reason"] = Lang.t("Superaste el límite de fallos")
-	elif int(result.get("score", 0)) < prepared.target_score:
-		out["reason"] = Lang.t("No llegaste a la puntuación (%d de %d)") % [
-			int(result.get("score", 0)), prepared.target_score]
+		out["reason"] = Lang.t("Te rendiste")
+	elif accuracy < prepared.min_accuracy and slot_id == "bis":
+		slot_id = ""   # Bis: pasas esta vez y se gasta
+		out["bis"] = true
+		out["passed"] = true
+	elif accuracy < prepared.min_accuracy:
+		out["reason"] = Lang.t("Acabaste con un %s %% de precisión; hacía falta un %d %%") % [
+			Lang.decimal(accuracy), roundi(prepared.min_accuracy)]
 	else:
 		out["passed"] = true
 
@@ -177,12 +183,13 @@ func finish_song(prepared: RoguePrepared, result: Dictionary) -> Dictionary:
 	return out
 
 
-## Dinero por pasar la cancion: base + bono por los fallos que sobraron, mas
-## las monedas de Flecha Hucha, x Contrato y menos el Impuesto.
+## Dinero por pasar la cancion: base + bono segun cuanto se supero la
+## precision minima, mas las monedas de Flecha Hucha, x Contrato y menos el
+## Impuesto.
 func song_reward(prepared: RoguePrepared, result: Dictionary) -> int:
 	var size := prepared.boss.size
-	var limit := maxi(1, prepared.rules.miss_limit)
-	var spare := clampf(1.0 - float(result.get("misses", 0)) / limit, 0.0, 1.0)
+	var room := maxf(1.0, 100.0 - prepared.min_accuracy)
+	var spare := clampf((float(result.get("accuracy", 0.0)) - prepared.min_accuracy) / room, 0.0, 1.0)
 	var coins := float(RogueCatalog.REWARD_BASE[size]) + roundf(RogueCatalog.REWARD_BONUS[size] * spare)
 
 	var perfects: PackedInt32Array = result.get("coin_perfects", PackedInt32Array())

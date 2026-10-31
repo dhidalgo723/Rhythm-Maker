@@ -32,11 +32,11 @@ func _ready() -> void:
 	get_tree().quit(1 if _failed else 0)
 
 
-## El Jefe Techno toca Coleccionista y el Rap Sax&Bass; los demas, la de
-## prueba sin combinacion.
+## Los jefes finales con cancion propia la tocan (Techno, Rap, Salsa); los
+## demas, la de prueba sin combinacion.
 func _test_combo_songs() -> void:
 	_check(_pool.problems.is_empty(), "pool.json sin problemas: %s" % ", ".join(_pool.problems))
-	var want := {"techno": "coleccionista", "rap": "saxbass"}
+	var want := {"techno": "coleccionista", "rap": "saxbass", "salsa": "final_salsa"}
 	var seen := {}
 	for seed in 400:
 		var run := RogueRun.create(_pool, seed)
@@ -45,7 +45,7 @@ func _test_combo_songs() -> void:
 		_check(final.song_id == expected, "jefe %s: toca %s (deberia %s)" % [final.combo_id, final.song_id, expected])
 		seen[final.combo_id] = true
 	_check(seen.has("techno") and seen.has("rap"), "en 400 partidas salen Techno y Rap")
-	print("[canciones] Techno = Coleccionista, Rap = Sax&Bass, el resto la de prueba")
+	print("[canciones] Techno, Rap y Salsa con su cancion; el resto, la de prueba")
 
 
 func _check(cond: bool, msg: String) -> void:
@@ -66,34 +66,25 @@ func _test_sequence() -> void:
 	_check(seq == [Size.SMALL, Size.MEDIUM, Size.MEDIUM, Size.BIG, Size.FINAL],
 		"secuencia: Pequeno, Mediano, Mediano, Grande y Jefe")
 
-	# El limite de cada cancion es el de su tamano.
-	var limits: Array[int] = []
-	for i in seq.size():
-		limits.append(RogueCatalog.miss_limit(i))
-	_check(limits == [5, 20, 20, 35, 30], "limites 5 / 20 / 20 / 35 / 30 (son %s)" % str(limits))
-	# Lo que se pidio para cada tamano: duracion, notas, fallos y velocidad.
+	_check(is_equal_approx(RogueCatalog.MIN_ACCURACY, 70.0), "se pierde por debajo del 70% de precision")
+	_check(is_equal_approx(RogueCatalog.min_accuracy_with(Size.FINAL, []), 85.0), "en el Jefe, por debajo del 85%")
+	_check(is_equal_approx(RogueCatalog.min_accuracy_with(Size.FINAL, ["cuerdas"]), 82.0),
+		"las Cuerdas tambien bajan la del Jefe")
+	# Lo que se pidio para cada tamano: duracion, notas (de prueba) y velocidad.
 	var asked := {
-		Size.SMALL: [30000, 40, 5, "lenta"],
-		Size.MEDIUM: [60000, 60, 20, "media"],
-		Size.BIG: [120000, 180, 35, "rapida"],
-		Size.FINAL: [120000, 270, 30, "rapida"],   # 135 por minuto
+		Size.SMALL: [60000, 40, "rapida"],
+		Size.MEDIUM: [60000, 60, "rapida"],
+		Size.BIG: [120000, 180, "rapida"],
+		Size.FINAL: [120000, 270, "rapida"],   # 135 por minuto
 	}
 	for size in asked:
 		var spec: Dictionary = RogueCatalog.SIZE_SPECS[size]
 		var want: Array = asked[size]
-		_check(spec["duration_ms"] == want[0] and spec["notes"] == want[1]
-			and spec["misses"] == want[2] and spec["speed"] == want[3],
-			"%s: %s" % [RogueCatalog.SIZE_NAMES[size], RogueCatalog.size_summary(size)])
-	_check(RogueCatalog.travel_ms(Size.SMALL) > RogueCatalog.travel_ms(Size.MEDIUM)
-		and RogueCatalog.travel_ms(Size.MEDIUM) > RogueCatalog.travel_ms(Size.BIG),
-		"lenta > media > rapida: las notas tardan menos en caer cuanto mas grande el jefe")
-
-	var targets: Array[int] = []
-	for i in seq.size():
-		targets.append(RogueCatalog.score_target(i, 100))
-	for i in range(1, targets.size()):
-		_check(targets[i] > targets[i - 1], "la puntuacion objetivo sube cancion a cancion")
-	print("[secuencia] P M G x3 + G final | fallos %s" % str(limits))
+		_check(spec["duration_ms"] == want[0] and spec["notes"] == want[1] and spec["speed"] == want[2],
+			"%s: %s" % [RogueCatalog.SIZE_NAMES[size], str(spec)])
+	for size in RogueCatalog.SIZE_SPECS:
+		_check(RogueCatalog.travel_ms(size) == 500, "%s: las notas aparecen 0,5 s antes" % RogueCatalog.SIZE_NAMES[size])
+	print("[secuencia] P M M G + Jefe, precision minima %d %%" % int(RogueCatalog.MIN_ACCURACY))
 
 
 ## Lo que se pidio comprobar: que cada cancion dure lo de su jefe y tenga sus notas.
@@ -110,8 +101,16 @@ func _test_pool_durations() -> void:
 		if stream == null:
 			continue
 		var audio_ms := stream.get_length() * 1000.0
-		_check(audio_ms >= spec["duration_ms"], "%s: el audio (%.1f s) es mas corto que el jefe (%d s)" % [
-			song["id"], audio_ms / 1000.0, spec["duration_ms"] / 1000])
+		var length := RoguePool.song_length_ms(song, size)
+		# Las de prueba se cortan a su tamano: su audio tiene que llegar. Las
+		# grabadas se tocan enteras: su audio tiene que llegar a la ultima nota.
+		var needed := length if bool(song["cut"]) else length - PlaybackManager.AFTER_LAST_NOTE_MS
+		_check(audio_ms >= needed - 300.0, "%s: el audio (%.1f s) acaba antes que la cancion (%.1f s)" % [
+			song["id"], audio_ms / 1000.0, needed / 1000.0])
+		_check(bool(song["cut"]) == str(song["id"]).begins_with("prueba_"),
+			"%s: solo las de prueba se cortan a su tamano" % song["id"])
+		# Las que van al pulso (Polirritmia, Zoom) necesitan el tempo en el chart.
+		_check(entry.chart.bpm > 0.0, "%s: el chart no tiene bpm (tools/detect_bpm.py)" % song["id"])
 		var count := entry.chart.notes.size()
 		var last := entry.chart.notes[-1].end_ms()
 		# Las notas exactas solo se exigen a los charts de prueba. Las canciones
@@ -120,9 +119,9 @@ func _test_pool_durations() -> void:
 		if str(song["id"]).begins_with("prueba_"):
 			_check(count == spec["notes"], "%s: tiene %d notas, el jefe pide %d" % [song["id"], count, spec["notes"]])
 			_check(last < spec["duration_ms"], "%s: hay notas despues de %d s" % [song["id"], spec["duration_ms"] / 1000])
-		var per_min := float(count) / (float(spec["duration_ms"]) / 60000.0)
-		print("  %-16s %-6s audio %6.1f s | jefe %3d s | %3d notas (%.0f/min) | ultima %.1f s" % [
-			song["id"], song["size"], audio_ms / 1000.0, spec["duration_ms"] / 1000, count, per_min, last / 1000.0])
+		var per_min := float(count) / (length / 60000.0)
+		print("  %-18s %-6s audio %6.1f s | se juega %5.1f s | %3d notas (%.0f/min)" % [
+			song["id"], song["size"], audio_ms / 1000.0, length / 1000.0, count, per_min])
 	print("[duraciones] cada cancion de prueba cumple la duracion y las notas de su jefe")
 
 
@@ -158,28 +157,31 @@ func _test_prepare() -> void:
 		if p == null:
 			continue
 		var spec := boss.spec()
-		_check(is_equal_approx(p.length_ms, float(spec["duration_ms"])),
-			"cancion %d: dura %.0f ms, el jefe pide %d" % [i, p.length_ms, spec["duration_ms"]])
-		_check(p.chart.end_ms == spec["duration_ms"], "cancion %d: el chart acaba donde el jefe" % i)
+		var audio_ms := p.stream.get_length() * 1000.0
+		var expected_ms := minf(RoguePool.song_length_ms(_pool.find(boss.song_id), boss.size), audio_ms)
+		_check(is_equal_approx(p.length_ms, expected_ms),
+			"cancion %d: dura %.0f ms, deberia %.0f" % [i, p.length_ms, expected_ms])
+		_check(p.chart.end_ms == roundi(p.length_ms), "cancion %d: el chart acaba donde la cancion" % i)
 		# Las notas de cada tamano son las que se piden a los charts de prueba;
 		# las canciones grabadas tienen las que se grabaron.
 		if boss.song_id.begins_with("prueba_"):
 			_check(p.notes == spec["notes"], "cancion %d: %d notas jugables (pide %d)" % [i, p.notes, spec["notes"]])
-		_check(p.target_score > 0 and p.target_score < p.notes * 350, "cancion %d: objetivo razonable (%d)" % [i, p.target_score])
-		_check(p.rules.miss_limit == boss.miss_limit(), "cancion %d: limite de fallos del jefe" % i)
+		var want := 85.0 if boss.size == Size.FINAL else 70.0
+		_check(is_equal_approx(p.min_accuracy, want), "cancion %d: precision minima del %d%%" % [i, int(want)])
+		_check(p.rules.miss_limit == 0, "cancion %d: sin limite de fallos (solo cuenta la precision)" % i)
 		_check(p.rules.travel_time_ms == RogueCatalog.travel_ms(boss.size), "cancion %d: velocidad del jefe" % i)
 		_check(boss.revealed, "al empezar, el jefe se revela")
 		_check(p.chart != p.entry.chart and p.entry.chart.end_ms != -1, "se juega una copia, no el chart guardado")
-	print("[preparar] duracion, notas, objetivo y limite por tamano")
+	print("[preparar] duracion, notas, precision minima y sin limite de fallos")
 
 
 func _test_consumables() -> void:
 	var run := _run()
 	run.current_boss().abilities.assign(["ventana_estrecha"])
 	run.pending.assign(["cuerdas", "contrato", "ensayo", "grabadora", "cascos_rotos", "soborno"])
-	var base := run.current_boss().miss_limit()
 	var p := run.prepare_song()
-	_check(p.rules.miss_limit == base + 3 - 5, "Cuerdas +3 y Contrato -5 al limite (%d)" % p.rules.miss_limit)
+	_check(is_equal_approx(p.min_accuracy, 70.0 - 3.0 + 5.0),
+		"Cuerdas -3%% y Contrato +5%% a la precision minima (%.1f)" % p.min_accuracy)
 	_check(is_equal_approx(p.money_mult, 2.0), "Contrato: dinero x2")
 	_check(p.rules.risk_free_until_ms == 15000.0, "Ensayo: 15 s sin riesgo")
 	_check(p.slot_uses == 2, "Grabadora: 2 usos")
@@ -226,41 +228,49 @@ func _test_money() -> void:
 	var run := _run()
 	run.current_boss().abilities.clear()
 	var p := run.prepare_song()
-	var limit := p.rules.miss_limit
-	var perfect_run := run.song_reward(p, {"misses": 0})
-	var sloppy := run.song_reward(p, {"misses": limit})
+	var perfect_run := run.song_reward(p, {"accuracy": 100.0})
+	var just := run.song_reward(p, {"accuracy": 70.0})
 	_check(perfect_run == RogueCatalog.REWARD_BASE[Size.SMALL] + RogueCatalog.REWARD_BONUS[Size.SMALL],
-		"sin fallos se cobra todo (%d)" % perfect_run)
-	_check(sloppy == RogueCatalog.REWARD_BASE[Size.SMALL], "al limite solo la base (%d)" % sloppy)
-	_check(perfect_run > run.song_reward(p, {"misses": limit / 2}), "fallar menos da mas dinero")
+		"con un 100%% se cobra todo (%d)" % perfect_run)
+	_check(just == RogueCatalog.REWARD_BASE[Size.SMALL], "justo en el 70%% solo la base (%d)" % just)
+	_check(perfect_run > run.song_reward(p, {"accuracy": 85.0}), "mas precision da mas dinero")
 
 	var coins := PackedInt32Array([0, 0, 0, 25, 0])
-	_check(run.song_reward(p, {"misses": 0, "coin_perfects": coins}) == perfect_run + 2,
+	_check(run.song_reward(p, {"accuracy": 100.0, "coin_perfects": coins}) == perfect_run + 2,
 		"Hucha: 25 perfectos = 2 monedas extra")
 	p.money_mult = 2.0
-	_check(run.song_reward(p, {"misses": 0}) == perfect_run * 2, "Contrato: x2")
+	_check(run.song_reward(p, {"accuracy": 100.0}) == perfect_run * 2, "Contrato: x2")
 	p.money_mult = 1.0
 	p.tax = 0.025
-	_check(run.song_reward(p, {"misses": 0}) == perfect_run - 1, "Impuesto: se queda al menos 1 moneda")
+	_check(run.song_reward(p, {"accuracy": 100.0}) == perfect_run - 1, "Impuesto: se queda al menos 1 moneda")
 
-	# Pasar y no pasar.
+	# Pasar y no pasar: solo cuenta la precision, no los fallos ni la puntuacion.
 	p.tax = 0.0
-	var out := run.finish_song(p, {"score": p.target_score, "misses": 0})
-	_check(out["passed"] and run.money == perfect_run and run.index == 1, "pasar: cobras y avanzas")
+	var out := run.finish_song(p, {"score": 0, "misses": 40, "accuracy": 100.0})
+	_check(out["passed"] and run.money == perfect_run and run.index == 1,
+		"con un 100%% se pasa aunque la puntuacion sea 0 y haya fallos")
 	_check(run.state == RogueRun.State.SHOP and run.offers.size() == 3, "y abre la venta de garaje (3 cajas)")
 
 	run = _run()
 	p = run.prepare_song()
-	out = run.finish_song(p, {"score": p.target_score - 1, "misses": 0})
-	_check(not out["passed"] and run.state == RogueRun.State.LOST, "no llegar a la puntuacion pierde")
-	run = _run()
-	p = run.prepare_song()
-	out = run.finish_song(p, {"score": 999999, "misses": 0, "lost": true})
-	_check(out["boss_index"] == 0 and out["score"] == 999999 and out["miss_limit"] == p.rules.miss_limit,
+	out = run.finish_song(p, {"score": 999999, "misses": 1, "accuracy": 69.9})
+	_check(not out["passed"] and run.state == RogueRun.State.LOST, "por debajo del 70% se pierde")
+	_check(out["boss_index"] == 0 and out["score"] == 999999 and is_equal_approx(out["min_accuracy"], 70.0),
 		"el resultado guarda las cifras de la cancion para el mapa")
 	_check(run.bosses_beaten == 0, "perder no suma jefes superados")
-	_check(not out["passed"] and run.state == RogueRun.State.LOST, "pasarse de fallos pierde")
-	print("[dinero] base + bono por fallos, Hucha, Contrato, Impuesto; ganar y perder")
+
+	run = _run()
+	p = run.prepare_song()
+	out = run.finish_song(p, {"accuracy": 90.0, "lost": true})
+	_check(not out["passed"] and run.state == RogueRun.State.LOST, "rendirse pierde")
+
+	# Bis: salva una vez por debajo del minimo y se gasta.
+	run = _run()
+	run.slot_id = "bis"
+	p = run.prepare_song()
+	out = run.finish_song(p, {"accuracy": 50.0})
+	_check(out["passed"] and out["bis"] and run.slot_id == "", "Bis: pasas con un 50% y se gasta")
+	print("[dinero] base + bono por precision, Hucha, Contrato, Impuesto; pasar, perder y Bis")
 
 
 func _test_shop() -> void:
@@ -511,7 +521,7 @@ func _test_every_slot() -> void:
 		var effects_before := pm.rules.effects.size()
 		var why := rt.activate()
 		if id == "bis":
-			_check(why != "" and p.rules.bis, "Bis no se activa a mano: va en las reglas")
+			_check(why != "", "Bis no se activa a mano: actua al acabar la cancion")
 		else:
 			_check(why == "", "%s deberia activarse (%s)" % [id, why])
 			_check(rt.uses_left == 0, "%s gasta su uso" % id)
@@ -569,7 +579,7 @@ func _test_full_run() -> void:
 		_check(p != null, "la cancion %d se prepara" % (i + 1))
 		if p == null:
 			return
-		run.finish_song(p, {"score": p.target_score, "misses": 0})
+		run.finish_song(p, {"score": 0, "misses": 0, "accuracy": 95.0})
 		if run.state == RogueRun.State.SHOP:
 			visited_shops += 1
 			run.state = RogueRun.State.MAP

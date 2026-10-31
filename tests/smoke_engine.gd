@@ -24,7 +24,7 @@ func _ready() -> void:
 	_test_windows()
 	_test_forced_effects()
 	_test_risk_and_shields()
-	_test_bis()
+	_test_accuracy_weight()
 	_test_boss_shield()
 	_test_erase_and_skip()
 	_test_steal_and_boo()
@@ -193,20 +193,21 @@ func _test_risk_and_shields() -> void:
 	print("[riesgo] Ensayo, Flecha Escudo, Flecha de Cristal")
 
 
-func _test_bis() -> void:
+## La precision decide el roguelike: un fallo de la Flecha de Cristal cuenta
+## como dos notas falladas, y uno borrado deja de contar.
+func _test_accuracy_weight() -> void:
 	var rules := PlayRules.new()
-	rules.miss_limit = 2
-	rules.bis = true
-	var pm := _pm(_chart([[0, 0], [100, 0], [200, 0], [300, 0], [400, 0]]), rules)
-	var lost := [false]
-	var saved := [false]
-	pm.game_over.connect(func() -> void: lost[0] = true)
-	pm.bis_triggered.connect(func() -> void: saved[0] = true)
-	pm._sweep_lane(0, B + 2500)
-	_check(saved[0], "Bis deberia saltar al pasar el limite")
-	_check(lost[0], "Bis salva una sola vez: al volver a pasarlo se pierde")
+	rules.lane_miss_weight[1] = 2
+	var pm := _pm(_chart([[0, 0], [100, 0], [200, 1]]), rules)
+	pm.judge_press(0, B)
+	pm.judge_press(0, B + 100)
+	pm._sweep_lane(1, B + 1500)   # fallo doble en la Cristal
+	_check(is_equal_approx(pm.accuracy(), 50.0),
+		"2 perfectos y un fallo doble = 2 de 4 (%.1f %%)" % pm.accuracy())
+	pm._undo_miss(pm.miss_log[0])
+	_check(is_equal_approx(pm.accuracy(), 100.0), "borrar el fallo lo quita de la precision")
 	_done(pm)
-	print("[bis] sobrevive una vez justo en el limite")
+	print("[precision] el fallo doble cuenta doble y se puede borrar")
 
 
 func _test_boss_shield() -> void:

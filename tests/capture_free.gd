@@ -7,11 +7,18 @@ extends Node
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	AudioServer.set_bus_mute(0, true)
-	var entry: SongEntry = RoguePool.load_pool().find("prueba_grande")["entry"]
+	var entry: SongEntry = RoguePool.load_pool().songs_of_size("big")[0]["entry"]
 
 	var select: Control = load("res://scenes/song_select.tscn").instantiate()
 	add_child(select)
 	await _wait(0.4)
+	await _shoot("libre_0_lista")
+	# Ventana de renombrar con la primera grabacion (sin guardar nada).
+	select._open_rename(Library.list_songs()[0])
+	await _wait(0.3)
+	await _shoot("libre_0b_renombrar")
+	select._back_to_list()
+	await _wait(0.2)
 	select._on_play(entry)
 	await _wait(0.3)
 	await _shoot("libre_1_pregunta")

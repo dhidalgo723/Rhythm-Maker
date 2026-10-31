@@ -1,42 +1,98 @@
 {
   "songs": [
-    {
-      "id": "prueba_pequena",
-      "title": "Sin conexión (prueba, 30 s)",
-      "size": "small",
-      "chart": "songs/prueba_pequena.chart.json"
-    },
-    {
-      "id": "prueba_mediana",
-      "title": "Sin conexión (prueba, 1 min)",
-      "size": "medium",
-      "chart": "songs/prueba_mediana.chart.json"
-    },
-    {
-      "id": "prueba_grande",
-      "title": "Sin conexión (prueba, 2 min)",
-      "size": "big",
-      "chart": "songs/prueba_grande.chart.json"
-    },
-    {
-      "id": "prueba_jefe",
-      "title": "Sin conexión (prueba, jefe 2 min)",
-      "size": "boss",
-      "chart": "songs/prueba_jefe.chart.json"
-    },
-    {
-      "id": "coleccionista",
-      "title": "Coleccionista",
-      "size": "boss",
-      "combo": "techno",
-      "chart": "songs/coleccionista.chart.json"
-    },
-    {
-      "id": "saxbass",
-      "title": "Sax&Bass",
-      "size": "boss",
-      "combo": "rap",
-      "chart": "songs/saxbass.chart.json"
-    }
+	{
+	  "id": "pequeno_techno",
+	  "title": "Darara",
+	  "size": "small",
+	  "chart": "songs/pequeno_techno.chart.json"
+	},
+	{
+	  "id": "pequeno_rock",
+	  "title": "Little Rookie",
+	  "size": "small",
+	  "chart": "songs/pequeno_rock.chart.json"
+	},
+	{
+	  "id": "pequeno_retro",
+	  "title": "Retro",
+	  "size": "small",
+	  "chart": "songs/pequeno_retro.chart.json"
+	},
+	{
+	  "id": "mediano_anime",
+	  "title": "Anime",
+	  "size": "medium",
+	  "chart": "songs/mediano_anime.chart.json"
+	},
+	{
+	  "id": "mediano_drumbass",
+	  "title": "Drum & Bass 2",
+	  "size": "medium",
+	  "chart": "songs/mediano_drumbass.chart.json"
+	},
+	{
+	  "id": "mediano_metal",
+	  "title": "Metal",
+	  "size": "medium",
+	  "chart": "songs/mediano_metal.chart.json"
+	},
+	{
+	  "id": "mediano_reggaeton",
+	  "title": "Reggaeton",
+	  "size": "medium",
+	  "chart": "songs/mediano_reggaeton.chart.json"
+	},
+	{
+	  "id": "grande_metal",
+	  "title": "JauMe Tale",
+	  "size": "big",
+	  "chart": "songs/grande_metal.chart.json"
+	},
+	{
+	  "id": "grande_techno",
+	  "title": "DJancing",
+	  "size": "big",
+	  "chart": "songs/grande_techno.chart.json"
+	},
+	{
+	  "id": "grande_drumbass",
+	  "title": "Drum & Bass",
+	  "size": "big",
+	  "chart": "songs/grande_drumbass.chart.json"
+	},
+	{
+	  "id": "grande_miami_bass",
+	  "title": "Miami Bass",
+	  "size": "big",
+	  "chart": "songs/grande_miami_bass.chart.json"
+	},
+	{
+	  "id": "prueba_jefe",
+	  "title": "Sin conexión (prueba, jefe 2 min)",
+	  "size": "boss",
+	  "chart": "songs/prueba_jefe.chart.json",
+	  "cut_to_size": true
+	},
+	{
+	  "id": "coleccionista",
+	  "title": "Coleccionista",
+	  "size": "boss",
+	  "combo": "techno",
+	  "chart": "songs/coleccionista.chart.json"
+	},
+	{
+	  "id": "saxbass",
+	  "title": "Sax&Bass",
+	  "size": "boss",
+	  "combo": "rap",
+	  "chart": "songs/saxbass.chart.json"
+	},
+	{
+	  "id": "final_salsa",
+	  "title": "Salsa",
+	  "size": "boss",
+	  "combo": "salsa",
+	  "chart": "songs/final_salsa.chart.json"
+	}
   ]
 }

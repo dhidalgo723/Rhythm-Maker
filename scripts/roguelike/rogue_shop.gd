@@ -268,7 +268,10 @@ func _show_summary() -> void:
 	_info_kind.text = Lang.t("Venta de garaje")
 	_info_kind.add_theme_color_override("font_color", GuiTheme.TEXT_DIM)
 	_info_name.text = Lang.t("Siguiente: %s") % _run.current_boss().title()
-	_info_desc.text = RogueCatalog.size_summary(_run.current_boss().size)
+	var boss := _run.current_boss()
+	var song := _run.pool.find(boss.song_id) if _run.pool != null else {}
+	_info_desc.text = Lang.t("Canción: %s · %s") % [str(song.get("title", boss.song_id)),
+		RogueCatalog.duration_text(int(RoguePool.song_length_ms(song, boss.size)))] if not song.is_empty() else ""
 	_info_price.text = Lang.t("Elige una caja para ver qué hay")
 
 

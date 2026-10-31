@@ -9,6 +9,8 @@ extends Node
 ## usuario mueve o borra el archivo original.
 
 const SONGS_DIR := "user://songs"
+## Largo maximo de un nombre de grabacion.
+const MAX_TITLE := 40
 
 
 func _ready() -> void:
@@ -68,6 +70,37 @@ func save_recording(chart: Chart, source_audio: String, title: String) -> String
 		push_error("No se pudo guardar el chart: %s" % error_string(err))
 		return ""
 	return song_dir
+
+
+## Cambia el nombre de una grabacion. La carpeta tambien se renombra para que
+## siga el nombre: si no, una grabacion nueva con el nombre viejo caeria en esta
+## carpeta y la sobrescribiria. Devuelve "" si fue bien, o el motivo.
+func rename_song(entry: SongEntry, new_title: String) -> String:
+	var title := new_title.strip_edges()
+	if title == "":
+		return Lang.t("El nombre no puede estar vacío")
+	if title.length() > MAX_TITLE:
+		return Lang.t("El nombre puede tener como mucho %d letras") % MAX_TITLE
+
+	var slug := _make_slug(title)
+	if slug != entry.slug:
+		var base := slug
+		var n := 2
+		while DirAccess.dir_exists_absolute(SONGS_DIR.path_join(slug)):
+			slug = "%s_%d" % [base, n]
+			n += 1
+		var new_dir := SONGS_DIR.path_join(slug)
+		var err := DirAccess.rename_absolute(entry.dir, new_dir)
+		if err != OK:
+			return Lang.t("No se pudo renombrar: %s") % error_string(err)
+		entry.slug = slug
+		entry.dir = new_dir
+
+	entry.chart.title = title
+	var save_err := entry.chart.save_to_file(entry.dir.path_join("chart.json"))
+	if save_err != OK:
+		return Lang.t("No se pudo renombrar: %s") % error_string(save_err)
+	return ""
 
 
 func delete_song(entry: SongEntry) -> void:

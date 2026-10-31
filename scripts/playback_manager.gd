@@ -38,7 +38,6 @@ signal message(text: String)
 signal hold_completed(lane: int)
 signal hold_broken(lane: int)
 signal slot_stolen()
-signal bis_triggered()
 
 var clock: SongClock
 var chart: Chart
@@ -67,7 +66,9 @@ var _lane_head := PackedInt32Array()
 var _real_notes := 0
 var _shield_used := PackedByteArray()
 var _consecutive_misses := 0
-var _bis_used := false
+## Fallos de mas por la Flecha de Cristal (cada fallo en ella cuenta 2): en
+## la precision cuentan como notas falladas aparte.
+var _extra_miss_weight := 0
 var _boss_shield_up := false
 var _boss_shield_streak := 0
 var _boss_shield_down_at := 0.0
@@ -121,7 +122,7 @@ func start(stream: AudioStream, song_chart: Chart, play_rules: PlayRules = null)
 	counts.resize(Judgement.Kind.size())
 	scroll_boost = 0.0
 	_consecutive_misses = 0
-	_bis_used = false
+	_extra_miss_weight = 0
 	_boss_shield_up = rules.boss_shield_perfects > 0
 	_boss_shield_streak = 0
 	_silenced = false
@@ -202,22 +203,20 @@ func judged() -> int:
 	return total
 
 
-## Precision en %: cada nivel pesa segun Judgement.ACCURACY.
+## Precision en %: cada nivel pesa segun Judgement.ACCURACY. Un fallo doble
+## (Flecha de Cristal) cuenta como dos notas falladas.
 func accuracy() -> float:
-	if judged() == 0:
+	var total := judged() + _extra_miss_weight
+	if total == 0:
 		return 0.0
 	var weighted := 0.0
 	for kind in Judgement.ORDER:
 		weighted += counts[kind] * float(Judgement.ACCURACY[kind])
-	return weighted / judged() * 100.0
+	return weighted / total * 100.0
 
 
 func boss_shield_up() -> bool:
 	return _boss_shield_up
-
-
-func bis_used() -> bool:
-	return _bis_used
 
 
 # --- Efectos con tramo ---
@@ -594,6 +593,7 @@ func _register_miss(lane: int, pn: PlayNote, t_ms: float) -> void:
 	var weight := rules.lane_miss_weight[lane]
 	counts[Judgement.Kind.MISS] += 1
 	misses += weight
+	_extra_miss_weight += weight - 1
 	var before := score
 	score = maxi(0, score + Judgement.score_for(Judgement.Kind.MISS, 0))
 	var delta := score - before
@@ -613,18 +613,12 @@ func _register_miss(lane: int, pn: PlayNote, t_ms: float) -> void:
 	score_changed.emit(score, combo, misses)
 
 	if rules.miss_limit > 0 and misses > rules.miss_limit:
-		if rules.bis and not _bis_used:
-			_bis_used = true
-			misses = rules.miss_limit
-			message.emit(Lang.t("¡Bis!"))
-			bis_triggered.emit()
-			score_changed.emit(score, combo, misses)
-		else:
-			_finish(true)
+		_finish(true)
 
 
 func _undo_miss(entry: Dictionary) -> void:
 	misses = maxi(0, misses - int(entry["weight"]))
+	_extra_miss_weight = maxi(0, _extra_miss_weight - (int(entry["weight"]) - 1))
 	counts[Judgement.Kind.MISS] = maxi(0, counts[Judgement.Kind.MISS] - 1)
 	score = maxi(0, score - int(entry["delta"]))
 	var pn: PlayNote = entry["note"]

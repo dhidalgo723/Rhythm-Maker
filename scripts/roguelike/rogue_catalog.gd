@@ -28,32 +28,44 @@ const SIZE_KEYS := {
 	Size.FINAL: "boss",
 }
 
-## duracion, notas totales, fallos permitidos (antes de la reduccion por ronda)
-## y velocidad de caida de las notas.
+## duracion y notas de los charts de prueba (las canciones grabadas se tocan
+## enteras, ver RoguePool), y velocidad de caida de las notas.
 const SIZE_SPECS := {
-	Size.SMALL: {"duration_ms": 30000, "notes": 40, "misses": 5, "speed": "lenta"},
-	Size.MEDIUM: {"duration_ms": 60000, "notes": 60, "misses": 20, "speed": "media"},    # 60 por minuto
-	Size.BIG: {"duration_ms": 120000, "notes": 180, "misses": 35, "speed": "rapida"},    # 90 por minuto
-	Size.FINAL: {"duration_ms": 120000, "notes": 270, "misses": 30, "speed": "rapida"},  # 135 por minuto
+	Size.SMALL: {"duration_ms": 60000, "notes": 40, "speed": "rapida"},
+	Size.MEDIUM: {"duration_ms": 60000, "notes": 60, "speed": "rapida"},    # 60 por minuto
+	Size.BIG: {"duration_ms": 120000, "notes": 180, "speed": "rapida"},     # 90 por minuto
+	Size.FINAL: {"duration_ms": 120000, "notes": 270, "speed": "rapida"},   # 135 por minuto
 }
 
+## Precision (%) con la que hay que acabar una cancion para pasarla. Es lo
+## unico con lo que se pierde. El Jefe final pide mas. Los consumibles la suben
+## o la bajan.
+const MIN_ACCURACY := 70.0
+const FINAL_MIN_ACCURACY := 85.0
+
 ## Velocidad de caida: cuanto tarda una nota en cruzar la pantalla. En el
-## roguelike la marca el jefe, no la preferencia del jugador.
-const SPEED_TRAVEL_MS := {"lenta": 1600, "media": 1200, "rapida": 850}
+## roguelike la marca el jefe, no la preferencia del jugador. Todos van a
+## "rapida": las notas aparecen 0,5 s antes de llegar.
+const SPEED_TRAVEL_MS := {"lenta": 1600, "media": 1200, "rapida": 500}
 const SPEED_NAMES := {"lenta": "lenta", "media": "media", "rapida": "rápida"}
 
 
-## "30 s" / "2 min".
+## "45 s" / "1 min" / "1:29".
 static func duration_text(ms: int) -> String:
-	return "%d min" % (ms / 60000) if ms % 60000 == 0 else "%d s" % (ms / 1000)
+	var secs := roundi(ms / 1000.0)
+	if secs < 60:
+		return "%d s" % secs
+	if secs % 60 == 0:
+		return "%d min" % (secs / 60)
+	return "%d:%02d" % [secs / 60, secs % 60]
 
 
-## "30 s, 40 notas, 15 fallos, velocidad lenta": resumen de un tamano.
-static func size_summary(size: Size) -> String:
-	var spec: Dictionary = SIZE_SPECS[size]
-	return Lang.t("%s, %d notas, %d fallos, velocidad %s") % [
-		duration_text(int(spec["duration_ms"])), int(spec["notes"]), int(spec["misses"]),
-		speed_name(spec["speed"])]
+## Precision minima de una cancion de ese tamano con estos consumibles pendientes.
+static func min_accuracy_with(size: Size, pending: Array[String]) -> float:
+	var out := FINAL_MIN_ACCURACY if size == Size.FINAL else MIN_ACCURACY
+	for id in pending:
+		out += float(CONSUMABLE.get(id, {}).get("accuracy", 0.0))
+	return clampf(out, 0.0, 100.0)
 
 
 # Nombres y descripciones en el idioma actual. Las tablas de abajo guardan el
@@ -92,13 +104,12 @@ static func rules_lines() -> Array[String]:
 	return [
 		Lang.t("5 canciones seguidas: Pequeña, Mediana, Mediana, Grande y el Jefe."),
 		"",
-		Lang.t("• Pequeño: %s.") % size_summary(Size.SMALL),
-		Lang.t("• Mediano: %s.") % size_summary(Size.MEDIUM),
-		Lang.t("• Grande: %s.") % size_summary(Size.BIG),
-		Lang.t("• Jefe: %s.") % size_summary(Size.FINAL),
-		Lang.t("• Cada canción tiene una puntuación que alcanzar y un límite de fallos."),
-		Lang.t("• Si fallas de más o no llegas a la puntuación, la partida vuelve a empezar desde cero."),
-		Lang.t("• Al pasar una canción ganas dinero según los fallos que te sobraron, y entras a la venta de garaje."),
+		Lang.t("• Cada canción se toca entera, y las notas aparecen %s s antes de llegar.") % Lang.decimal(
+			SPEED_TRAVEL_MS["rapida"] / 1000.0),
+		Lang.t("• Para pasar una canción hay que acabarla con al menos un %d %% de precisión (un %d %% en el Jefe).") % [
+			int(MIN_ACCURACY), int(FINAL_MIN_ACCURACY)],
+		Lang.t("• Si acabas por debajo, la partida vuelve a empezar desde cero."),
+		Lang.t("• Al pasar una canción ganas dinero según cuánto superaste esa precisión, y entras a la venta de garaje."),
 		Lang.t("• Tienes 1 ranura de mejora: se activa con Intro o Shift izquierdo, una vez por canción."),
 		Lang.t("• Las habilidades de los jefes pequeños y medianos se ven desde el principio; las de los grandes y el Jefe, al empezar la canción."),
 	]
@@ -110,11 +121,8 @@ static func travel_ms(size: Size) -> int:
 ## Las 5 canciones de una partida: Pequeno, Mediano, Mediano, Grande y el Jefe.
 const SEQUENCE: Array[Size] = [Size.SMALL, Size.MEDIUM, Size.MEDIUM, Size.BIG, Size.FINAL]
 
-## Puntuacion a alcanzar, como fraccion de la maxima sin combo (notas x 350).
-const TARGET_FIRST := 0.40
-const TARGET_LAST := 0.66
-
-## Dinero al pasar una cancion: base + bono segun los fallos que sobraron.
+## Dinero al pasar una cancion: base + bono segun cuanto se supero la precision
+## minima (todo el bono con un 100%).
 const REWARD_BASE := {Size.SMALL: 4, Size.MEDIUM: 5, Size.BIG: 6, Size.FINAL: 0}
 const REWARD_BONUS := {Size.SMALL: 4, Size.MEDIUM: 5, Size.BIG: 6, Size.FINAL: 0}
 
@@ -158,7 +166,7 @@ const SLOT := {
 	"arreglo": {"name": "Arreglo Simplificado", "price": 4, "image": "Arreglo Simplificado.png", "span": 0.10,
 		"desc": "Durante un 10%, los acordes (notas a la vez) se quedan en una sola nota."},
 	"bis": {"name": "Bis", "price": 8, "image": "Bis.png", "passive": true,
-		"desc": "Si superas el límite de fallos, sobrevives una vez justo en el límite. Se activa solo."},
+		"desc": "Si acabas una canción por debajo de la precisión mínima, la pasas igualmente. Se activa solo y se gasta."},
 	"beat_drop": {"name": "Beat Drop", "price": 8, "image": "Beat Drop.png", "seconds": 15.0, "skip_seconds": 5.0,
 		"penalty_span": 0.10, "scroll": 1.5,
 		"desc": "15 s en los que cualquier tecla es Perfecto; luego salta 5 s de canción. A cambio, después las notas van x1.5 durante un 10%."},
@@ -199,10 +207,10 @@ const CONSUMABLE := {
 		"desc": "Tu mejora de ranura tiene 2 usos en la siguiente canción."},
 	"soborno": {"name": "Soborno al Técnico", "price": 5, "image": "Soborno al Tecnico.png",
 		"desc": "Desactiva una habilidad del siguiente jefe."},
-	"contrato": {"name": "Contrato Discográfico", "price": 3, "image": "Contrato Discografico.png", "money_mult": 2.0, "misses": -5,
-		"desc": "x2 de dinero en la siguiente canción, pero -5 al límite de fallos."},
-	"cuerdas": {"name": "Juego de Cuerdas Nuevas", "price": 3, "image": "Juego de Cuerdas Nuevo.png", "misses": 3,
-		"desc": "+3 al límite de fallos en la siguiente canción."},
+	"contrato": {"name": "Contrato Discográfico", "price": 3, "image": "Contrato Discografico.png", "money_mult": 2.0, "accuracy": 5.0,
+		"desc": "x2 de dinero en la siguiente canción, pero la precisión mínima sube un 5%."},
+	"cuerdas": {"name": "Juego de Cuerdas Nuevas", "price": 3, "image": "Juego de Cuerdas Nuevo.png", "accuracy": -3.0,
+		"desc": "La precisión mínima de la siguiente canción baja un 3%."},
 }
 
 # ---------------------------------------------------------------- Jefes
@@ -304,15 +312,3 @@ static func abilities_of_size(size: Size) -> Array[String]:
 
 static func ability_name(id: String) -> String:
 	return Lang.t(ABILITY[id]["name"]) if ABILITY.has(id) else id
-
-
-## Fallos permitidos en la cancion `index`, antes de consumibles: los de su
-## tamano.
-static func miss_limit(index: int) -> int:
-	return int(SIZE_SPECS[SEQUENCE[index]]["misses"])
-
-
-## Puntuacion objetivo de la cancion `index` con `notes` notas reales.
-static func score_target(index: int, notes: int) -> int:
-	var ratio := lerpf(TARGET_FIRST, TARGET_LAST, float(index) / float(SEQUENCE.size() - 1))
-	return roundi(notes * Judgement.SCORES[Judgement.Kind.PERFECT] * ratio)

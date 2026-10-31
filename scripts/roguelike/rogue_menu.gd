@@ -233,10 +233,11 @@ func _next_song(run: RogueRun) -> Control:
 	box.add_child(_icon_row(SIGNPOST, 30, Lang.t("CANCIÓN"), str(song.get("title", boss.song_id)),
 		GuiTheme.TEXT))
 	box.add_child(_icon_row(ARROW_YELLOW, 18, Lang.t("RITMO"), "%s · %s" % [
-		RogueCatalog.duration_text(int(spec["duration_ms"])), RogueCatalog.speed_name(spec["speed"])],
+		RogueCatalog.duration_text(int(RoguePool.song_length_ms(song, boss.size))),
+		RogueCatalog.speed_name(spec["speed"])],
 		GuiTheme.TEXT))
-	box.add_child(_icon_row(HEART, 22, Lang.t("FALLOS"), Lang.t("%d permitidos") % boss.miss_limit(),
-		GuiTheme.TEXT))
+	box.add_child(_icon_row(HEART, 22, Lang.t("PRECISIÓN"), Lang.t("mínima %d %%") % roundi(
+		RogueCatalog.min_accuracy_with(boss.size, run.pending)), GuiTheme.TEXT))
 
 	box.add_child(_small(Lang.t("HABILIDAD") if boss.abilities.size() == 1 else Lang.t("HABILIDADES")))
 	if not boss.revealed:
@@ -284,8 +285,7 @@ func _center(run: RogueRun) -> Control:
 	box.add_child(_label(Lang.t("%s  ·  CANCIÓN %d DE %d") % [
 		boss.title().to_upper(), run.index + 1, run.songs_total()], 22, CYAN, 4, true))
 	box.add_child(_boss_strip(run))
-	var goal := Lang.t("Objetivo: %s puntos") % Lang.number(
-		RogueCatalog.score_target(run.index, int(spec["notes"])))
+	var goal := Lang.t("Precisión mínima: %d %%") % roundi(RogueCatalog.min_accuracy_with(boss.size, run.pending))
 	var reward: int = RogueCatalog.REWARD_BASE[boss.size] + RogueCatalog.REWARD_BONUS[boss.size]
 	if reward > 0:
 		goal += "  ·  " + Lang.t("Si la pasas: hasta %d monedas") % reward
@@ -297,14 +297,13 @@ func _center(run: RogueRun) -> Control:
 		var last_boss: RogueBoss = run.bosses[int(last["boss_index"])]
 		box.add_child(_label(Lang.t("ÚLTIMA CANCIÓN  ·  %s") % last_boss.title().to_upper(),
 			14, GuiTheme.TEXT_DIM, 0, true))
-		var limit := maxi(1, int(last["miss_limit"]))
-		box.add_child(_stat(Lang.t("PRECISIÓN"), "%s %%" % Lang.decimal(float(last["accuracy"])),
-			float(last["accuracy"]), GREEN))
-		box.add_child(_stat(Lang.t("FALLOS"), "%d / %d" % [int(last["misses"]), limit],
-			100.0 * int(last["misses"]) / limit, RED))
-		var target := maxi(1, int(last["target"]))
-		box.add_child(_stat(Lang.t("PUNTUACIÓN"), "%s / %s" % [Lang.number(int(last["score"])),
-			Lang.number(target)], 100.0 * int(last["score"]) / target, CYAN))
+		# La precision es lo que decide: su barra, en verde si paso la minima.
+		var acc := float(last["accuracy"])
+		var minimum := float(last["min_accuracy"])
+		box.add_child(_stat(Lang.t("PRECISIÓN"), "%s %% / %d %%" % [Lang.decimal(acc), roundi(minimum)],
+			acc, GREEN if acc >= minimum else RED))
+		box.add_child(_stat_text(Lang.t("FALLOS"), str(int(last["misses"]))))
+		box.add_child(_stat_text(Lang.t("PUNTUACIÓN"), Lang.number(int(last["score"]))))
 		box.add_child(_stat_text(Lang.t("PERFECTOS · COMBO"), "%d · %d" % [
 			int(last["perfects"]), int(last["max_combo"])]))
 		box.add_child(_stat_text(Lang.t("DINERO GANADO"), Lang.t("+%d monedas") % int(last["money"])))

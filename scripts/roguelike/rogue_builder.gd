@@ -29,7 +29,7 @@ static func build(run: RogueRun) -> RoguePrepared:
 
 	# --- Duracion del jefe ---
 	var spec := boss.spec()
-	p.length_ms = minf(float(spec["duration_ms"]), p.stream.get_length() * 1000.0)
+	p.length_ms = minf(RoguePool.song_length_ms(song, boss.size), p.stream.get_length() * 1000.0)
 	p.chart = p.entry.chart.duplicate_chart()
 	p.chart.end_ms = roundi(p.length_ms)
 	var inside: Array[ChartNote] = []
@@ -40,21 +40,17 @@ static func build(run: RogueRun) -> RoguePrepared:
 	p.chart.notes = inside
 
 	p.rules = PlayRules.new()
-	p.rules.miss_limit = boss.miss_limit()
 	p.rules.travel_time_ms = RogueCatalog.travel_ms(boss.size)
+	p.min_accuracy = RogueCatalog.min_accuracy_with(boss.size, run.pending)
 
 	_apply_consumables(run, p)
 	_apply_arrows(run, p)
-	if run.slot_id == "bis":
-		p.rules.bis = true
 	_apply_boss(run, p)
 
-	p.rules.miss_limit = maxi(1, p.rules.miss_limit)
 	p.notes = 0
 	for n in p.chart.notes:
 		if not n.decoy and not n.lane in p.rules.disabled_lanes:
 			p.notes += 1
-	p.target_score = RogueCatalog.score_target(boss.index, p.notes)
 	return p
 
 
@@ -82,9 +78,6 @@ static func _apply_consumables(run: RogueRun, p: RoguePrepared) -> void:
 					p.notices.append(Lang.t("Soborno: %s desactivada") % RogueCatalog.ability_name(p.boss.bribed))
 			"contrato":
 				p.money_mult *= float(data["money_mult"])
-				p.rules.miss_limit += int(data["misses"])
-			"cuerdas":
-				p.rules.miss_limit += int(data["misses"])
 		p.consumed.append(id)
 
 

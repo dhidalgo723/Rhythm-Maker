@@ -70,6 +70,13 @@ const TEXT := {
 	"Las notas aparecen %.1f s antes (más = las ves antes)": "Notes appear %.1f s early (more = you see them sooner)",
 	"  %s          %d notas   -   %d:%02d": "  %s          %d notes   -   %d:%02d",
 	"Borrar esta grabación": "Delete this recording",
+	"Renombrar": "Rename",
+	"Cambiar el nombre de esta grabación": "Rename this recording",
+	"CAMBIAR EL NOMBRE": "RENAME",
+	"Guardar": "Save",
+	"El nombre no puede estar vacío": "The name can't be empty",
+	"El nombre puede tener como mucho %d letras": "The name can be at most %d characters long",
+	"No se pudo renombrar: %s": "Could not rename: %s",
 	"¿Cómo quieres jugar %s?": "How do you want to play %s?",
 	"SIN HABILIDADES": "NO ABILITIES",
 	"CON HABILIDADES": "WITH ABILITIES",
@@ -95,8 +102,6 @@ const TEXT := {
 	"Esc para reanudar": "Esc to resume",
 	"CANCIÓN COMPLETADA": "SONG CLEARED",
 	"PERDISTE": "YOU LOST",
-	"Puntuación: %d / %d": "Score: %d / %d",
-	"Fallos: %d / %d": "Misses: %d / %d",
 	"Precisión: %.1f%%": "Accuracy: %.1f%%",
 	"[color=#%s]+%d monedas[/color]  (tienes %d)": "[color=#%s]+%d coins[/color]  (you have %d)",
 	"La partida vuelve a empezar desde cero.": "The run starts over from scratch.",
@@ -113,7 +118,6 @@ const TEXT := {
 	"¡Rota!": "Broken!",
 	"¡Escudo del jefe roto!": "Boss shield broken!",
 	"¡Escudo!": "Shield!",
-	"¡Bis!": "Encore!",
 	"¡Teclas mezcladas!": "Keys shuffled!",
 	"Las flechas vuelven a su carril": "The arrows are back in their lanes",
 	"El escudo del jefe se regenera": "The boss shield regenerates",
@@ -186,21 +190,25 @@ const TEXT := {
 	# --- Roguelike: portada y mapa ---
 	"5 canciones seguidas: Pequeña, Mediana, Mediana, Grande y el Jefe.":
 		"5 songs in a row: Small, Medium, Medium, Big, then the Boss.",
-	"• Pequeño: %s.": "• Small: %s.",
-	"• Mediano: %s.": "• Medium: %s.",
-	"• Grande: %s.": "• Big: %s.",
-	"• Jefe: %s.": "• Boss: %s.",
-	"• Cada canción tiene una puntuación que alcanzar y un límite de fallos.":
-		"• Each song has a target score and a miss limit.",
-	"• Si fallas de más o no llegas a la puntuación, la partida vuelve a empezar desde cero.":
-		"• If you miss too much or fall short of the score, the run starts over from scratch.",
-	"• Al pasar una canción ganas dinero según los fallos que te sobraron, y entras a la venta de garaje.":
-		"• Clearing a song earns money based on the misses you had left, and takes you to the garage sale.",
 	"• Tienes 1 ranura de mejora: se activa con Intro o Shift izquierdo, una vez por canción.":
 		"• You have 1 upgrade slot: activate it with Enter or Left Shift, once per song.",
 	"• Las habilidades de los jefes pequeños y medianos se ven desde el principio; las de los grandes y el Jefe, al empezar la canción.":
 		"• Small and medium boss abilities are visible from the start; big bosses and the Boss reveal theirs when the song starts.",
-	"%s, %d notas, %d fallos, velocidad %s": "%s, %d notes, %d misses, %s speed",
+	"• Cada canción se toca entera, y las notas aparecen %s s antes de llegar.":
+		"• Each song is played in full, and notes appear %s s before they arrive.",
+	"Canción: %s · %s": "Song: %s · %s",
+	"• Para pasar una canción hay que acabarla con al menos un %d %% de precisión (un %d %% en el Jefe).":
+		"• To clear a song you must finish it with at least %d %% accuracy (%d %% against the Boss).",
+	"• Si acabas por debajo, la partida vuelve a empezar desde cero.": "• If you finish below that, the run starts over from scratch.",
+	"• Al pasar una canción ganas dinero según cuánto superaste esa precisión, y entras a la venta de garaje.":
+		"• Clearing a song earns money based on how far you beat that accuracy, and takes you to the garage sale.",
+	"Te rendiste": "You gave up",
+	"Acabaste con un %s %% de precisión; hacía falta un %d %%": "You finished with %s %% accuracy; you needed %d %%",
+	"Precisión: %s %% (mínima %d %%)": "Accuracy: %s %% (minimum %d %%)",
+	"Precisión: %s %% / %d %%": "Accuracy: %s %% / %d %%",
+	"¡Bis! Pasas por esta vez, y el Bis se gasta.": "Encore! You pass this time, and the Encore is used up.",
+	"mínima %d %%": "minimum %d %%",
+	"Precisión mínima: %d %%": "Minimum accuracy: %d %%",
 	"¡Superaste los %d jefes! Partida ganada.": "You beat all %d bosses! Run won.",
 	"Perdiste en la canción %d de %d.": "You lost on song %d of %d.",
 	"Faltan canciones de tamaño: %s (en roguelike/pool.json)": "Missing songs of size: %s (in roguelike/pool.json)",
@@ -240,13 +248,11 @@ const TEXT := {
 	"CANCIÓN": "SONG",
 	"RITMO": "PACE",
 	"FALLOS": "MISSES",
-	"%d permitidos": "%d allowed",
 	"HABILIDAD": "ABILITY",
 	"HABILIDADES": "ABILITIES",
 	"Se revelan al empezar la canción (o con un Setlist).": "Revealed when the song starts (or with a Setlist).",
 	"PRÓXIMO JEFE": "NEXT BOSS",
 	"%s  ·  CANCIÓN %d DE %d": "%s  ·  SONG %d OF %d",
-	"Objetivo: %s puntos": "Target: %s points",
 	"Si la pasas: hasta %d monedas": "Clear it: up to %d coins",
 	"ÚLTIMA CANCIÓN": "LAST SONG",
 	"ÚLTIMA CANCIÓN  ·  %s": "LAST SONG  ·  %s",
@@ -268,7 +274,6 @@ const TEXT := {
 	"Ranura: %s": "Slot: %s",
 	"Se activa solo": "Triggers by itself",
 	"Intro o Shift izq. — %d uso(s)": "Enter or Left Shift — %d use(s)",
-	"Objetivo: %d / %d": "Target: %d / %d",
 	"Pausa: %.1f s": "Pause: %.1f s",
 	"Escudo del jefe activo": "Boss shield up",
 	"¡Bloqueada!": "Blocked!",
@@ -281,8 +286,6 @@ const TEXT := {
 	"Carril Minado: %s": "Mined Lane: %s",
 	"Polirritmia: %s va en tresillos": "Polyrhythm: %s plays in triplets",
 	"Maldición: %s es Maldita": "Curse: %s is Cursed",
-	"Superaste el límite de fallos": "You went over the miss limit",
-	"No llegaste a la puntuación (%d de %d)": "You fell short of the score (%d of %d)",
 	"Ahora no": "Not now",
 	"No tienes mejora en la ranura": "You have no upgrade in the slot",
 	"%s se activa solo": "%s triggers by itself",
@@ -355,8 +358,8 @@ const TEXT := {
 	"Arreglo Simplificado": "Simplified Arrangement",
 	"Durante un 10%, los acordes (notas a la vez) se quedan en una sola nota.": "For 10%, chords (simultaneous notes) become a single note.",
 	"Bis": "Encore",
-	"Si superas el límite de fallos, sobrevives una vez justo en el límite. Se activa solo.":
-		"If you go over the miss limit, you survive once right at the limit. Triggers by itself.",
+	"Si acabas una canción por debajo de la precisión mínima, la pasas igualmente. Se activa solo y se gasta.":
+		"If you finish a song below the minimum accuracy, you still clear it. Triggers by itself and is used up.",
 	"Beat Drop": "Beat Drop",
 	"15 s en los que cualquier tecla es Perfecto; luego salta 5 s de canción. A cambio, después las notas van x1.5 durante un 10%.":
 		"15 s where any key is Perfect; then it skips 5 s of the song. In exchange, notes then go x1.5 for 10%.",
@@ -392,9 +395,9 @@ const TEXT := {
 	"Soborno al Técnico": "Bribe the Technician",
 	"Desactiva una habilidad del siguiente jefe.": "Disables one of the next boss's abilities.",
 	"Contrato Discográfico": "Record Deal",
-	"x2 de dinero en la siguiente canción, pero -5 al límite de fallos.": "x2 money on the next song, but -5 to the miss limit.",
+	"x2 de dinero en la siguiente canción, pero la precisión mínima sube un 5%.": "x2 money on the next song, but the minimum accuracy goes up by 5%.",
 	"Juego de Cuerdas Nuevas": "New Set of Strings",
-	"+3 al límite de fallos en la siguiente canción.": "+3 to the miss limit on the next song.",
+	"La precisión mínima de la siguiente canción baja un 3%.": "The minimum accuracy of the next song goes down by 3%.",
 
 	# --- Habilidades de jefe ---
 	"Inversión": "Inversion",

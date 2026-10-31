@@ -7,6 +7,7 @@ extends Node
 ##   4. un bot que toca a tiempo en los 5 carriles (espacio incluido) acierta todo
 ##   5. sin limite de fallos: no tocar nada no hace perder, solo cuenta fallos
 ##   6. Juego Libre con habilidades: se eligen y se aplican a una copia del chart
+##   7. cambiar el nombre de una grabacion (con su carpeta)
 ## Correr: godot --headless --path . res://tests/smoke_play.tscn
 
 const TONE := "res://tests/test_tone.wav"
@@ -24,6 +25,7 @@ func _ready() -> void:
 	await _test_autoplay()
 	await _test_no_miss_limit()
 	await _test_free_abilities()
+	_test_rename()
 	if not _failed:
 		print("SMOKE TEST OK")
 	get_tree().quit(1 if _failed else 0)
@@ -31,7 +33,7 @@ func _ready() -> void:
 
 # --- 6. Juego Libre con habilidades ---
 func _test_free_abilities() -> void:
-	var entry: SongEntry = RoguePool.load_pool().find("prueba_grande")["entry"]
+	var entry: SongEntry = RoguePool.load_pool().songs_of_size("big")[0]["entry"]
 	var notes_before := entry.chart.notes.size()
 
 	# La lista: elegir cancion, "con habilidades", marcar tres.
@@ -76,6 +78,47 @@ func _test_free_abilities() -> void:
 	Session.selected_song = null
 	await get_tree().process_frame
 	print("[habilidades] se eligen en la lista y se aplican a una copia del chart")
+
+
+# --- 7. Renombrar grabaciones ---
+## Con grabaciones de prueba propias, que se borran al acabar: las del jugador
+## no se tocan.
+func _test_rename() -> void:
+	var tone := ProjectSettings.globalize_path(TONE)
+	var made: Array[SongEntry] = []
+	for title in ["zz prueba renombrar", "zz prueba ocupada"]:
+		var c := Chart.new()
+		c.add_note(500, 0)
+		_check(Library.save_recording(c, tone, title) != "", "se guarda la grabacion de prueba")
+	for e in Library.list_songs():
+		if e.title().begins_with("zz prueba"):
+			made.append(e)
+	_check(made.size() == 2, "hay 2 grabaciones de prueba")
+	if made.size() != 2:
+		return
+	var entry: SongEntry = made[1] if made[1].title() == "zz prueba renombrar" else made[0]
+
+	_check(Library.rename_song(entry, "   ") != "", "un nombre vacio no vale")
+	_check(Library.rename_song(entry, "x".repeat(Library.MAX_TITLE + 1)) != "", "un nombre demasiado largo no vale")
+	_check(Library.rename_song(entry, "  zz Prueba Nueva  ") == "", "se renombra")
+	_check(entry.title() == "zz Prueba Nueva" and entry.slug == "zz_prueba_nueva",
+		"el nombre se guarda sin espacios sobrantes y la carpeta lo sigue (%s)" % entry.slug)
+	var found := false
+	for e in Library.list_songs():
+		if e.slug == "zz_prueba_nueva" and e.title() == "zz Prueba Nueva" and e.note_count() == 1:
+			found = true
+	_check(found, "la biblioteca la encuentra con su nombre nuevo y sus notas")
+	_check(not DirAccess.dir_exists_absolute(Library.SONGS_DIR.path_join("zz_prueba_renombrar")),
+		"la carpeta vieja ya no esta")
+
+	# Si la carpeta del nombre nuevo ya existe, no se pisa: lleva sufijo.
+	_check(Library.rename_song(entry, "zz prueba ocupada") == "", "renombrar a un nombre que ya existe")
+	_check(entry.slug == "zz_prueba_ocupada_2", "no pisa la otra grabacion (%s)" % entry.slug)
+
+	for e in Library.list_songs():
+		if e.title().begins_with("zz prueba") or e.title().begins_with("zz Prueba"):
+			Library.delete_song(e)
+	print("[renombrar] cambia el nombre y la carpeta, sin pisar otras grabaciones")
 
 
 func _fail(msg: String) -> void:

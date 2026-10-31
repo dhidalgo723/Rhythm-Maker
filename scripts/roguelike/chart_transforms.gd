@@ -104,7 +104,8 @@ static func break_string(chart: Chart, rng: RandomNumberGenerator) -> int:
 
 ## Polirritmia: las notas de un carril se desplazan a tresillos (la rejilla de
 ## un tercio de beat que NO coincide con negras), contra el resto que sigue en
-## negras y corcheas. Necesita bpm; si no lo hay devuelve -1 y no cambia nada.
+## negras y corcheas. Necesita bpm; si no lo hay devuelve -1 y no cambia nada
+## (las grabaciones no lo traen: tools/detect_bpm.py lo saca del audio).
 static func polyrhythm(chart: Chart, rng: RandomNumberGenerator) -> int:
 	var beat := chart.beat_ms()
 	if beat <= 0.0:
