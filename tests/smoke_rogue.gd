@@ -36,7 +36,8 @@ func _ready() -> void:
 ## demas, la de prueba sin combinacion.
 func _test_combo_songs() -> void:
 	_check(_pool.problems.is_empty(), "pool.json sin problemas: %s" % ", ".join(_pool.problems))
-	var want := {"techno": "coleccionista", "rap": "saxbass", "salsa": "final_salsa", "dubstep": "final_dubstep"}
+	var want := {"techno": "coleccionista", "rap": "saxbass", "salsa": "final_salsa", "dubstep": "final_dubstep",
+		"experimental": "final_experimental"}
 	var seen := {}
 	for seed in 400:
 		var run := RogueRun.create(_pool, seed)
@@ -83,7 +84,7 @@ func _test_sequence() -> void:
 		_check(spec["duration_ms"] == want[0] and spec["notes"] == want[1] and spec["speed"] == want[2],
 			"%s: %s" % [RogueCatalog.SIZE_NAMES[size], str(spec)])
 	for size in RogueCatalog.SIZE_SPECS:
-		_check(RogueCatalog.travel_ms(size) == 500, "%s: las notas aparecen 0,5 s antes" % RogueCatalog.SIZE_NAMES[size])
+		_check(RogueCatalog.travel_ms(size) == 700, "%s: las notas aparecen 0,7 s antes" % RogueCatalog.SIZE_NAMES[size])
 	print("[secuencia] P M M G + Jefe, precision minima %d %%" % int(RogueCatalog.MIN_ACCURACY))
 
 

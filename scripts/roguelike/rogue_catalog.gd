@@ -45,8 +45,8 @@ const FINAL_MIN_ACCURACY := 85.0
 
 ## Velocidad de caida: cuanto tarda una nota en cruzar la pantalla. En el
 ## roguelike la marca el jefe, no la preferencia del jugador. Todos van a
-## "rapida": las notas aparecen 0,5 s antes de llegar.
-const SPEED_TRAVEL_MS := {"lenta": 1600, "media": 1200, "rapida": 500}
+## "rapida": las notas aparecen 0,7 s antes de llegar.
+const SPEED_TRAVEL_MS := {"lenta": 1600, "media": 1200, "rapida": 700}
 const SPEED_NAMES := {"lenta": "lenta", "media": "media", "rapida": "rápida"}
 
 

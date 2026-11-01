@@ -2,85 +2,97 @@
   "songs": [
 	{
 	  "id": "pequeno_techno",
-	  "title": "Darara",
+	  "title": "Darara - Techno",
 	  "size": "small",
 	  "chart": "songs/pequeno_techno.chart.json"
 	},
 	{
 	  "id": "pequeno_rock",
-	  "title": "Little Rookie",
+	  "title": "Little Rookie- Hard Rock",
 	  "size": "small",
 	  "chart": "songs/pequeno_rock.chart.json"
 	},
 	{
 	  "id": "pequeno_retro",
-	  "title": "Retro",
+	  "title": "Beep Bop - Experimental",
 	  "size": "small",
 	  "chart": "songs/pequeno_retro.chart.json"
 	},
 	{
 	  "id": "pequeno_rnb",
-	  "title": "R&B",
+	  "title": "Air Nenbi- R&B",
 	  "size": "small",
 	  "chart": "songs/pequeno_rnb.chart.json"
 	},
 	{
 	  "id": "pequeno_trap",
-	  "title": "Trap",
+	  "title": "Drifter - Trap",
 	  "size": "small",
 	  "chart": "songs/pequeno_trap.chart.json"
 	},
 	{
+	  "id": "pequeno_experimental",
+	  "title": "Descending Piano - Experimental",
+	  "size": "small",
+	  "chart": "songs/pequeno_experimental.chart.json"
+	},
+	{
+	  "id": "pequeno_rap",
+	  "title": "Raw Cassette Grain - Rap",
+	  "size": "small",
+	  "chart": "songs/pequeno_rap.chart.json"
+	},
+	{
 	  "id": "mediano_anime",
-	  "title": "Anime",
+	  "title": "Waika - Experimental",
 	  "size": "medium",
 	  "chart": "songs/mediano_anime.chart.json"
 	},
 	{
 	  "id": "mediano_drumbass",
-	  "title": "Drum & Bass 2",
+	  "title": "Drumambei - Drumm&Bass",
 	  "size": "medium",
 	  "chart": "songs/mediano_drumbass.chart.json"
 	},
 	{
 	  "id": "mediano_metal",
-	  "title": "Metal",
+	  "title": "Mital Strake - Metal",
 	  "size": "medium",
 	  "chart": "songs/mediano_metal.chart.json"
 	},
 	{
 	  "id": "mediano_reggaeton",
-	  "title": "Reggaeton",
+	  "title": "Incoming - Reggaeton",
 	  "size": "medium",
 	  "chart": "songs/mediano_reggaeton.chart.json"
 	},
 	{
 	  "id": "grande_metal",
-	  "title": "JauMe Tale",
+	  "title": "JauMe Tale - Metal",
 	  "size": "big",
 	  "chart": "songs/grande_metal.chart.json"
 	},
 	{
 	  "id": "grande_techno",
-	  "title": "DJancing",
+	  "title": "DJancing - Techno",
 	  "size": "big",
 	  "chart": "songs/grande_techno.chart.json"
 	},
 	{
 	  "id": "grande_drumbass",
-	  "title": "Drum & Bass",
+	  "title": "Pumchimpum - Drumm&Bass",
 	  "size": "big",
 	  "chart": "songs/grande_drumbass.chart.json"
 	},
 	{
 	  "id": "grande_miami_bass",
-	  "title": "Miami Bass",
+	  "title": "Vice Miami - Miami Bass",
 	  "size": "big",
 	  "chart": "songs/grande_miami_bass.chart.json"
 	},
 	{
 	  "id": "grande_dubstep",
-	  "title": "Dubstep",
+	  "title": "DubsDubs - Dusbtep",
 	  "size": "big",
 	  "chart": "songs/grande_dubstep.chart.json"
 	},
@@ -93,31 +105,38 @@
 	},
 	{
 	  "id": "coleccionista",
-	  "title": "Coleccionista",
+	  "title": "Coleccionista - Techno",
 	  "size": "boss",
 	  "combo": "techno",
 	  "chart": "songs/coleccionista.chart.json"
 	},
 	{
 	  "id": "saxbass",
-	  "title": "Sax&Bass",
+	  "title": "Sax&Bass - Rap",
 	  "size": "boss",
 	  "combo": "rap",
 	  "chart": "songs/saxbass.chart.json"
 	},
 	{
 	  "id": "final_salsa",
-	  "title": "Salsa",
+	  "title": "Katsup - Salsa",
 	  "size": "boss",
 	  "combo": "salsa",
 	  "chart": "songs/final_salsa.chart.json"
 	},
 	{
 	  "id": "final_dubstep",
-	  "title": "Dubstep 13",
+	  "title": "DuskTex - Dubstep",
 	  "size": "boss",
 	  "combo": "dubstep",
 	  "chart": "songs/final_dubstep.chart.json"
+	},
+	{
+	  "id": "final_experimental",
+	  "title": "Arcade Dreams - Experimental",
+	  "size": "boss",
+	  "combo": "experimental",
+	  "chart": "songs/final_experimental.chart.json"
 	}
   ]
 }
